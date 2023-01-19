@@ -15,6 +15,7 @@ class PostgresDB:
         self.db_port = db_port
         self.secret_details = self.get_secrets(project_id, secret_id, version_id)
 
+
     def get_secrets(self, project_id: str, secret_id: str, version_id: int) -> dict:
         """
         Using GCP's Secret Manager, get secret details for connecting to the Spotify API
@@ -47,14 +48,14 @@ class PostgresDB:
     def connection(self):
         "Create connection to database in a context manager"
         connection = psycopg2.connect(
-            port=self.db_port,
-            **self.secret_details
-            ### below is for testing ###
-            # host=self.secret_details['host'],
             # port=self.db_port,
-            # database='testdb',
-            # user='test_user',
-            # password='test_password',
+            # **self.secret_details
+            ### below is for testing ###
+            host=self.secret_details['host'],
+            port=self.db_port,
+            database='testdb',
+            user='test_user',
+            password='test_password',
         )
         connection.autocommit = True
         try:
@@ -69,8 +70,11 @@ class PostgresDB:
             cursor = connection.cursor()
             try:
                 yield cursor
+            # except psycopg2.errors.UniqueViolation:
+            #     connection.rollback()
             finally:
                 cursor.close()
+
 
     def with_cursor(self, func):
         "Decorator function for connecting to db"
@@ -80,6 +84,11 @@ class PostgresDB:
                 kwargs["cursor"] = cursor
                 return func(*args, **kwargs)
         return wrapper
+
+    # def rollback(self):
+    #     connection = self.connection()
+    #     connection.rollback()
+
 
     @contextmanager
     def connection_super(self):
@@ -114,3 +123,33 @@ class PostgresDB:
                 kwargs["cursor"] = cursor
                 return func(*args, **kwargs)
         return wrapper
+
+
+
+    ### trying to have connection be one of the args - does not work ... yet ... ###
+
+    # def __init__(self, project_id: str, secret_id: str, version_id: int, db_port=5432):
+    #     self.db_port = db_port
+    #     self.secret_details = self.get_secrets(project_id, secret_id, version_id)
+    #     self.connection = psycopg2.connect(
+    #         port=self.db_port,
+    #         **self.secret_details
+    #     )
+
+    # @contextmanager
+    # def cursor(self):
+    #     cursor = self.connection.cursor()
+    #     try:
+    #         yield cursor
+    #         self.connection.commit()
+    #     except Exception:
+    #         self.connection.rollback()
+    #         raise
+    #     finally:
+    #         cursor.close()
+
+    # def with_cursor(self, func):
+    #     def wrapper(*args, **kwargs):
+    #         with self.cursor() as cursor:
+    #             return func(cursor, self.connection, *args, **kwargs)
+    #     return wrapper

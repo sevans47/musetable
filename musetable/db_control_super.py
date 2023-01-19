@@ -26,7 +26,7 @@ class DatabaseControlSuper:
         databases = cursor.fetchall()
         print("Database list:")
         for database in databases:
-            print(database[0])
+            print(f"- {database[0]}")
 
     @db.with_cursor_super
     def create_database(self, cursor, dbname):
@@ -113,15 +113,15 @@ if __name__ == "__main__":
 
     # databases
     dbname="testdb"
-    # db_control_super.create_database(dbname=dbname)
+    db_control_super.create_database(dbname=dbname)
     db_control_super.list_databases()  # ok
 
     # users
     username='test_user'
     password='test_password'
-    # db_control_super.create_user(username=username, password=password)  # ok
-    # db_control_super.grant_user_permissions(username='test_user', dbname=dbname)  # ok
-    # db_control_super.list_all_users()
+    db_control_super.create_user(username=username, password=password)  # ok
+    db_control_super.grant_user_permissions(username='test_user', dbname=dbname)  # ok
+    db_control_super.list_all_users()
 
 
     ### deleting
