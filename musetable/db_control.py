@@ -3,13 +3,12 @@ Control various operations on a database
 
 TODO:
     - __init__
-    - delete_all_values
-    - delete_all_values_all_tables
 """
 
 import psycopg2
 from psycopg2 import sql
 from db_decorator import PostgresDB
+import re
 
 from const import PROJECT_ID, SECRET_ID, VERSION_ID
 
@@ -111,13 +110,51 @@ class DatabaseControl:
         except (Exception, psycopg2.Error) as error:
             print(f"Error while listing values:", error)
 
+    @db.with_cursor
+    def delete_all_values_one_table(self, cursor, table_name):
+        query = sql.SQL("DELETE FROM {table}").format(
+            table=sql.Identifier(table_name)
+        )
+        try:
+            cursor.execute(query)
+            print(f"All values successfully deleted from table {table_name}")
+        except (Exception, psycopg2.Error) as error:
+            print(f"Error while deleting values from table {table_name}:", error)
 
-    def delete_all_values(self):
-        pass
+    @db.with_cursor
+    def delete_all_values_all_tables(self, cursor):
+        table_query = "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'"
+        cursor.execute(table_query)
+        table_names = [t[0] for t in cursor.fetchall()]
 
+        for table_name in table_names[::-1]:
+            delete_query = sql.SQL("DELETE FROM {table} CASCADE").format(
+                table=sql.Identifier(table_name)
+            )
+            try:
+                cursor.execute(delete_query)
 
-    def delete_all_values_all_tables(self):
-        pass
+            except psycopg2.errors.ForeignKeyViolation as e:
+
+                # get names of child table and constraint
+                match = re.search(r'"(\w+)"', e.pgerror)
+                if match:
+                    child_table = match.group(1)
+                match = re.search(r'"(\w+)"', e.pgcode)
+                if match:
+                    constraint_name = match.group(1)
+
+                # remove the foreign key constraint
+                fk_query = sql.SQL("ALTER TABLE {} DROP CONSTRAINT {};").format(
+                    sql.Identifier(child_table),
+                    sql.Identifier(constraint_name)
+                )
+                cursor.execute(fk_query)
+
+                # delete
+                cursor.execute(delete_query)
+
+        print("all data deleted, boss!")
 
 if __name__ == "__main__":
 
@@ -138,9 +175,14 @@ if __name__ == "__main__":
     # db_control.list_columns(table_name="sections")  # ok
 
     # values
-    # db_control.list_table_values(table_name="sections")  # ok
+    # db_control.list_table_values(table_name="phrases")  # ok
 
     ### deleting
+
+    # values
+    # db_control.delete_all_values_one_table(table_name="phrases")  # ok
+    # db_control.delete_all_values_all_tables()  # ok
+    # db_control.list_table_values(table_name="tracks")
 
     # tables
     # db_control.delete_all_tables() #ok
