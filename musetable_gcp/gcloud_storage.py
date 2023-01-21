@@ -1,3 +1,7 @@
+"""
+
+"""
+
 from google.cloud import storage
 from google.api_core import exceptions
 import glob
@@ -50,6 +54,40 @@ class GCloudStorage:
         finally:
             gsclient.close()
 
+    def upload_file_to_bucket(self, local_file, bucket_name, project_id):
+
+        # check local_file
+        if not os.path.isfile(local_file):
+            print(f"local file '{local_file}' not found")
+            return 1
+
+        # get blob name
+        par_dir = os.path.dirname(os.path.abspath('data'))
+        blob_name = os.path.relpath(local_file, start=par_dir)
+
+        # connect to client and get bucket
+        gsclient = storage.Client(project=project_id)
+        try:
+            bucket = gsclient.get_bucket(bucket_name)
+            print(f"bucket '{bucket_name}' found")
+
+            # make blob
+            blob = bucket.blob(blob_name)
+
+            # upload file
+            print(f"uploading {local_file} ...")
+            with open(local_file, 'rb') as my_file:
+                blob.upload_from_file(my_file)
+
+            print("upload complete")
+
+        except exceptions.NotFound:
+            print(f"bucket {bucket_name} not found")
+
+        finally:
+            gsclient.close()
+
+
     # TODO: make this function
     def read_csv(self):
         csv_uri = 'gs://udemy-gcp-de-test-bucket/retail_db/orders/part-00000'
@@ -59,9 +97,16 @@ class GCloudStorage:
 if __name__ == "__main__":
     from const import PROJECT_ID, BUCKET_NAME, ROOT_DIR
 
+    from musetable.preprocess import PreprocessXML
+
     gcs = GCloudStorage()
 
     # gcs.create_bucket("musetable", PROJECT_ID)  # ok
 
     # local_folder = os.path.join(ROOT_DIR, 'data')
     # gcs.upload_folder_to_bucket(local_folder, BUCKET_NAME, PROJECT_ID)  # ok
+
+    # local_file = os.path.join(ROOT_DIR, 'data', 'test_dir', 'test.txt')
+    # local_file = "data/test_dir/test.txt"
+    # local_file = 'potato/tasty.eat'
+    # gcs.upload_file_to_bucket(local_file, BUCKET_NAME, PROJECT_ID)  # ok
