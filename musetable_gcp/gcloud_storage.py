@@ -87,6 +87,25 @@ class GCloudStorage:
         finally:
             gsclient.close()
 
+    def download_object(self, blob_source_name, bucket_name, project_id, download_location):
+        gsclient = storage.Client(project=project_id)
+        try:
+            bucket = gsclient.get_bucket(bucket_name)
+            print(f"bucket '{bucket_name}' found")
+
+            # get blob
+            blob = bucket.blob(blob_source_name)
+
+            # download blob
+            blob.download_to_filename(download_location)
+
+            print("download complete")
+
+        except exceptions.NotFound:
+            print(f"bucket {bucket_name} not found")
+
+        finally:
+            gsclient.close()
 
     # TODO: make this function
     def read_csv(self):
@@ -110,3 +129,7 @@ if __name__ == "__main__":
     # local_file = "data/test_dir/test.txt"
     # local_file = 'potato/tasty.eat'
     # gcs.upload_file_to_bucket(local_file, BUCKET_NAME, PROJECT_ID)  # ok
+
+    # blob_source_name = "data/Juban District - Verse.mxl"
+    # download_location = os.path.join(ROOT_DIR, "data", "temp", "Juban District - Verse.mxl")
+    # gcs.download_object(blob_source_name, BUCKET_NAME, PROJECT_ID, download_location)  # ok
