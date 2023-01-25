@@ -7,13 +7,18 @@ be inserted into the database using the insert.py module
 import os
 import music21 as m21
 import pandas as pd
+import psycopg2
+from psycopg2 import sql
+from musetable.db_decorator import PostgresDB
 
-from const import ROOT_DIR
+from musetable.const import PROJECT_ID, SECRET_ID, VERSION_ID
+
+db = PostgresDB(PROJECT_ID, SECRET_ID, VERSION_ID)
 
 class PreprocessXML:
     """PreprocessXML prepares a MusicXML file to be inserted into a database"""
 
-    def __init__(self, mxl_filepath: str, playlist_filepath: str):
+    def __init__(self, mxl_filepath: str, playlist_filepath: str, from_cgs = False):
         """
         Parameters:
         -----------
@@ -365,9 +370,90 @@ class PreprocessXML:
         harmony_durations = self.get_harmony_durations(harmony_dict['offset_ql'], section_dict['duration_ql'])
         harmony_dict['duration_ql'] = harmony_durations
 
-        return (track_dict, section_dict, phrases_dict, note_dict, harmony_dict)
+        data_dicts = (track_dict, section_dict, phrases_dict, note_dict, harmony_dict)
+
+        return data_dicts
+
+    @db.with_cursor
+    def make_tables_dict(self, cursor) -> tuple:
+        """
+        Create dictionary of all tables and their columns in a database.  Important
+        for ensuring the correct order of column names when inserting data.
+
+        Returns:
+        --------
+        table_names (list): all table names in the database
+        tables_dict (dict): keys are table names, values are lists of column names
+        """
+
+        tables_dict = {}
+
+        # retrieve table names from database and store in 'tables' list
+        query = "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public';"
+        cursor.execute(query)
+        table_names = [table[0] for table in cursor.fetchall()]
+
+        # retrieve column names from each table in the database
+        for table_name in table_names:
+            query = sql.SQL("SELECT * FROM {table};").format(
+                table=sql.Identifier(table_name)
+            )
+            cursor.execute(query)
+            column_names = [desc[0] for desc in cursor.description]
+            tables_dict[table_name] = column_names
+
+        return (table_names, tables_dict)
+
+    def preprocess_data(self) -> list:
+        """
+        Prepare data in dictionaries returned from stream_to_dict() so they are the correct
+        format for inserting into the database.
+
+        Parameters:
+        -----------
+        tables_dict     (dict): dictionary of all tables and columns from the database. Used to ensure the correct order
+        table_names      (str): list of names of all tables in correct order
+
+        Returns:
+        --------
+        preprocessed_data   (list): Each element is a list of tuples:
+                                    - one list represents one table
+                                    - one tuple represents one row
+        """
+        preprocessed_data = []
+
+        # prepare data variables for preprocessing
+        table_names, tables_dict = self.make_tables_dict()
+        data_dicts = self.stream_to_dict()
+
+        print("preprocessing data ... ")
+        for table_name, data_dict in zip(table_names, data_dicts):
+
+            # list of tuples for each data_dict
+            data_chunk = []
+
+            if table_name in ["tracks", "sections"]:
+                data_chunk.append(tuple(data_dict.values()))
+                preprocessed_data.append(data_chunk)
+                continue
+
+            for i in range(len(data_dict['section_id'])):
+                row = []
+
+                # ensure data is in the correct column order by using tables_dict lists
+                for col in tables_dict[table_name]:
+                    row.append(data_dict[col][i])
+                data_chunk.append(tuple(row))
+
+            preprocessed_data.append(data_chunk)
+
+        print("data preprocessed")
+        return preprocessed_data
 
 if __name__ == "__main__":
+
+    from const import ROOT_DIR
+
     # get filepaths
     mxl_filepath = os.path.join(ROOT_DIR, 'data', 'Juban District - Verse.mxl')
     csv_filepath = os.path.join(ROOT_DIR, 'data', 'playlist.csv')
@@ -376,6 +462,10 @@ if __name__ == "__main__":
     preproc = PreprocessXML(mxl_filepath, csv_filepath)
 
     # create data dictionaries
-    data_dicts = preproc.stream_to_dict()
-    for data_dict in data_dicts:
-        print(data_dict.keys())
+    # data_dicts = preproc.stream_to_dict()
+    # for data_dict in data_dicts:
+    #     print(data_dict.keys())
+
+    # preprocess data
+    preproc_data = preproc.preprocess_data()
+    print(preproc_data[2])

@@ -7,10 +7,10 @@ TODO:
 
 import psycopg2
 from psycopg2 import sql
-from db_decorator import PostgresDB
+from musetable.db_decorator import PostgresDB
 import re
 
-from const import PROJECT_ID, SECRET_ID, VERSION_ID
+from musetable.const import PROJECT_ID, SECRET_ID, VERSION_ID
 
 db = PostgresDB(PROJECT_ID, SECRET_ID, VERSION_ID)
 
