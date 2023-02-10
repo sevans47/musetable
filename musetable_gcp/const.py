@@ -8,3 +8,4 @@ PROJECT_ID = 'audio-projects-363306'
 BUCKET_NAME = 'musetable'
 
 # google bigquery
+DATASET_NAME = 'musetable'

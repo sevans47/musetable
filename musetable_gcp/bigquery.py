@@ -51,14 +51,26 @@ class BigQuery:
         """
         Using a local MusicXML file, preprocess it and store it in Google BigQuery
         """
+        # preprocess the local MusicXML file
         self.preproc = PreprocessXML(mxl_filepath, playlist_filepath)
         self.preprocessed_data = self.preproc.preprocess_data()
+
+        # get names of database tables (NOTE: gets table info from SQL database)
         self.table_names, self._ = self.preproc.make_tables_dict()
+
+        # insert preprocessed data into GBQ table by table
         for i, table_name in enumerate(self.table_names):
+
+            # save table id for GBQ
             table_id = f"{self.dataset_id}.{table_name}"
+
+            # fetch GBQ table
             table = self.client.get_table(table_id)
+
+            # insert data into table
             self.client.insert_rows(table, self.preprocessed_data[i])
             print(f"{len(self.preprocessed_data[i])} rows added to table {table_id}")
+
         print("Data load complete")
 
 
@@ -110,7 +122,7 @@ class BigQuery:
 
     def load_data_from_gcs(self, blob_source_name, bucket_name):
         """
-        Get MusicXML file stored in google cloud storage, preprocess it, and
+        Retrieve MusicXML file stored in google cloud storage, preprocess it, and
         load it into google BigQuery.
         """
         # check that file exists in bucket
