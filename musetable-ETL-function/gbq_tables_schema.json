@@ -1,0 +1,60 @@
+{
+    "tracks": [
+        {"name": "id", "type": "STRING"},
+        {"name": "artist", "type": "STRING"},
+        {"name": "track_name", "type": "STRING"},
+        {"name": "album_name", "type": "STRING"},
+        {"name": "release_date", "type": "STRING"}
+    ],
+    "sections": [
+        {"name": "id", "type": "STRING"},
+        {"name": "track_id", "type": "STRING"},
+        {"name": "title", "type": "STRING"},
+        {"name": "section", "type": "STRING"},
+        {"name": "composer", "type": "STRING"},
+        {"name": "duration_ql", "type": "FLOAT64"},
+        {"name": "num_phrases", "type": "INT64"},
+        {"name": "range_interval", "type": "STRING"},
+        {"name": "range_midi_low", "type": "INT64"},
+        {"name": "range_midi_high", "type": "INT64"},
+        {"name": "time_signature", "type": "STRING"},
+        {"name": "bpm", "type": "STRING"},
+        {"name": "bpm_ql", "type": "STRING"}
+    ],
+    "phrases": [
+        {"name": "section_id", "type": "STRING"},
+        {"name": "phrase_num", "type": "INT64"},
+        {"name": "phrase_length", "type": "FLOAT64"},
+        {"name": "phrase_start_offset", "type": "FLOAT64"},
+        {"name": "phrase_end_offset", "type": "FLOAT64"}
+    ],
+    "notes": [
+        {"name": "section_id", "type": "STRING"},
+        {"name": "note_name", "type": "STRING"},
+        {"name": "octave", "type": "INT64"},
+        {"name": "midi_num", "type": "INT64"},
+        {"name": "pitch_class", "type": "INT64"},
+        {"name": "duration_ql", "type": "FLOAT64"},
+        {"name": "phrase_num", "type": "INT64"},
+        {"name": "measure", "type": "INT64"},
+        {"name": "beat", "type": "FLOAT64"},
+        {"name": "offset_ql", "type": "FLOAT64"},
+        {"name": "chord_name", "type": "STRING"},
+        {"name": "nct", "type": "INT64"},
+        {"name": "from_root_name", "type": "STRING"},
+        {"name": "from_root_pc", "type": "INT64"}
+    ],
+    "harmony": [
+        {"name": "section_id", "type": "STRING"},
+        {"name": "chord_name", "type": "STRING"},
+        {"name": "chord_kind", "type": "STRING"},
+        {"name": "chord_root", "type": "STRING"},
+        {"name": "chord_bass", "type": "STRING"},
+        {"name": "pitches", "type": "STRING"},
+        {"name": "phrase_num", "type": "INT64"},
+        {"name": "measure", "type": "INT64"},
+        {"name": "beat", "type": "FLOAT64"},
+        {"name": "offset_ql", "type": "FLOAT64"},
+        {"name": "duration_ql", "type": "FLOAT64"}
+    ]
+}
