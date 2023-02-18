@@ -1,6 +1,8 @@
 """
 Using the Spotify API and my Spotify Wrapped Top Songs 2022 playlist, collect
 information on each track in the playlist
+
+TODO: try using spotipy library
 """
 
 from google.cloud import secretmanager

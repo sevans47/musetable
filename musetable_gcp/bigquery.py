@@ -122,7 +122,7 @@ class BigQuery:
 
     def load_data_from_gcs(self, blob_source_name, bucket_name):
         """
-        Retrieve MusicXML file stored in google cloud storage, preprocess it, and
+        Retrieve MusicXML file stored in google cloud storage, save it locally, preprocess it, and
         load it into google BigQuery.
         """
         # check that file exists in bucket
@@ -148,6 +148,32 @@ class BigQuery:
         os.remove(playlist_filepath)
 
 
+    def delete_all_rows_from_table(self, table_name):
+
+        table_id = f"{self.dataset_id}.{table_name}"
+
+        dml_statement = (f"TRUNCATE TABLE {table_id}")
+        query_job = self.client.query(dml_statement)  # API request
+        query_job.result()  # Waits for statement to finish
+
+        print(f"all rows deleted from table {table_id}")
+
+
+    def delete_all_rows_from_all_tables(self):
+        tables = self.client.list_tables(self.dataset_id)  # return list of all tables
+
+        print(f"deleting all rows from all tables in dataset {self.dataset_id}...")
+        for table in tables:
+            table_id = f"{self.dataset_id}.{table.table_id}"
+
+            dml_statement = (f"TRUNCATE TABLE {table_id}")
+            query_job = self.client.query(dml_statement)  # API request
+            query_job.result()  # Waits for statement to finish
+
+            print(f"- all rows deleted from table {table_id}")
+
+        print(f"all rows deleted from all tables in dataset {self.dataset_id}")
+
 if __name__ == "__main__":
     from const import ROOT_DIR, BUCKET_NAME, PROJECT_ID
     import os
@@ -167,3 +193,8 @@ if __name__ == "__main__":
     # blob_source_name = "data/Juban District - Chorus.mxl"
     # gbq.download_gcs_object(blob_source_name, BUCKET_NAME)  # ok
     # gbq.load_data_from_gcs(blob_source_name, BUCKET_NAME)  # ok
+
+    # table_name = "phrases"
+    # gbq.delete_all_rows_from_table(table_name)  # ok
+
+    # gbq.delete_all_rows_from_all_tables()  # ok
