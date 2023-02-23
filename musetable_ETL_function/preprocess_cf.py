@@ -1,6 +1,7 @@
 import json
 import music21 as m21
 import pandas as pd
+import os
 
 
 class PreprocessXML:
@@ -382,7 +383,10 @@ class PreprocessXML:
         table_names = []
         tables_dict = {}
 
-        with open('gbq_tables_schema.json', 'r') as file:
+        this_folder = os.path.dirname(os.path.abspath(__file__))
+        schema_filepath = os.path.join(this_folder, 'gbq_tables_schema.json')
+
+        with open(schema_filepath, 'r') as file:
             schema_file = json.load(file)
         for table_name, column_list in schema_file.items():
             table_names.append(table_name)
