@@ -12,7 +12,7 @@ cloud_functions_deploy:
 		--trigger-event google.storage.object.finalize \
 		--trigger-resource ${BUCKET_NAME} \
 		--memory 256MB \
-		--source musetable-ETL-function
+		--source musetable_ETL_function
 
 cloud_functions_logs:
 	@gcloud functions logs read

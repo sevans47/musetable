@@ -7,8 +7,8 @@ HOST = "localhost"
 DBNAME = "musetable"
 
 # for spotify secrets
-PROJECT_ID = 'audio-projects-363306'
-SPOTIFY_SECRET_ID = 'spotify_auth'
+PROJECT_ID = "audio-projects-363306"
+SPOTIFY_SECRET_ID = "spotify_auth"
 SPOTIFY_VERSION_ID = 6
 PLAYLIST_NAME = "Your Top Songs 2022"
 
