@@ -79,3 +79,4 @@ make cloud_functions_deploy
 - create musetable_midi, which would allow for a less robust analysis, but would accept midi files instead of MusicXML files.
 - make musetable-ETL-function more foolproof and easier to deploy
 - make my 2022 tracks dataset available on Kaggle
+- remove necessity of playlist.csv
