@@ -313,6 +313,12 @@ class PreprocessXML:
 
             # deal with info applicable to notes and rests
             if isinstance(ele, m21.note.Rest) or isinstance(ele, m21.note.Note):
+
+                # if note is tie continue / stop, skip note but add duration to previous note
+                if ele.tie and (ele.tie.type == 'stop' or ele.tie.type == 'continue'):
+                    note_dict['duration_ql'][-1] += ele.duration.quarterLength
+                    continue
+
                 note_dict['section_id'].append(section_id)
                 note_dict['note_name'].append(ele.name)
                 note_dict['duration_ql'].append(ele.duration.quarterLength)
