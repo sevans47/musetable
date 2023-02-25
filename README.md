@@ -22,11 +22,11 @@ Notation software such as the open source MuseScore makes it easy and fast to cr
 (add image later)
 
 Two notes about creating the score in order to get the most out of musetable:
-  1. Slurs are used to denote musical phrases, which can be thought of as a group of notes to make a kind of musical sentence.  Avoid using slurs to indicate legato or performance instructions.
-  2. One score should be one section of a piece.  For example, if a piece called Cool Song has a verse, pre-chorus, chorus, and bridge, four separate scores would be needed for that piece, with titles like "Cool Song - verse".  I plan to change this with a future version of musetable that would accept a complete score.
+  1. Slurs are used to denote musical phrases, which can be thought of as a group of notes to make a kind of musical sentence.  Avoid using slurs to indicate legato or performance instructions.  However, tieing notes is ok.
+  2. One score should be one section of a piece.  For example, if a piece called Cool Song has a verse, pre-chorus, chorus, and bridge, four separate scores would be needed for that piece, with titles like "Cool Song - Verse".  I plan to change this with a future version of musetable that would accept a complete score.
 
 ## save as a MusicXML file
-MusicXML files are a type of xml file format for storing Western music notation.  Although less common than midi file format, it includes important information about the score, such as chord symbols.  It's possible to export MusicXML files directly from music notation software.
+MusicXML files are a type of xml file format for storing Western music notation.  Although less common than midi file format, MusicXML includes important information about the score, such as chord symbols.  It's possible to export MusicXML files directly from music notation software.
 
 ## transform the .mxl file
 I used the music21 python library to transform the data into a format that could be inserted into the following tables.
@@ -54,12 +54,12 @@ Here are the main modules inside the `musetable_gcp` package:
 - bigquery.py - create datasets and tables, and insert data using MusicXML files stored either locally or in google cloud storage
 
 ### Automate ETL pipeline in gcp using Cloud Functions
-The `musetable-ETL-function` package can be deployed to Google Cloud Functions.  When a new file is added to the specified bucket, it sends a trigger to the function and automatically does the following:
+The `musetable_ETL_function` package can be deployed to Google Cloud Functions.  When a new file is added to the specified bucket, it sends a trigger to the function and automatically does the following:
 1. The function extracts the newly added file
 2. The file is transformed into tabular data
 3. The transformed data is loaded into Google BigQuery
 
-After a) using the bigquery.py module to create a musetable dataset, b) creating a bucket to store MusicXML files, and c) updating the constat values for the bucket, project, and dataset in Makefile and const_cf.py, use the following command to deploy the musetable-ETL-function:
+After a) using the bigquery.py module to create a musetable dataset, b) creating a bucket to store MusicXML files, and c) updating the variables for the bucket, project, and dataset in Makefile and const_cf.py, use the following command to deploy the musetable-ETL-function:
 ```
 make cloud_functions_deploy
 ```
@@ -77,6 +77,6 @@ make cloud_functions_deploy
 - allow for scores that have three staves - a melody, a bassline, and some kind of harmony / voicing part.
 - allow for complete scores that have the different sections indicated on the score.  Use this to create a summary of the piece's form.
 - create musetable_midi, which would allow for a less robust analysis, but would accept midi files instead of MusicXML files.
-- make musetable-ETL-function more foolproof and easier to deploy
+- make musetable_ETL_function more foolproof and easier to deploy
 - make my 2022 tracks dataset available on Kaggle
 - remove necessity of playlist.csv

@@ -156,12 +156,51 @@ class DatabaseControl:
 
         print("all data deleted, boss!")
 
+    @db.with_cursor
+    def delete_all_values_by_section_id(self, cursor, section_id):
+
+        # get tables with section_id columns
+        table_query = """
+        SELECT t.table_name
+        FROM information_schema.tables t
+        INNER JOIN information_schema.columns c ON c.table_name = t.table_name
+        WHERE c.column_name = 'section_id'
+            AND t.table_schema = 'public'
+        """
+        cursor.execute(table_query)
+        table_names = [t[0] for t in cursor.fetchall()]
+
+        # delete section_id rows from child tables of 'sections' table
+        for table_name in table_names:
+            child_delete_query = sql.SQL("DELETE FROM {table} WHERE section_id = {sec_id};").format(
+                table=sql.Identifier(table_name),
+                sec_id=sql.Literal(section_id)
+            )
+            try:
+                cursor.execute(child_delete_query)
+                print(f"All section_id '{section_id}' values deleted from table'{table_name}'")
+            except (Exception, psycopg2.Error) as error:
+                print(f"Error while deleting section_id '{section_id}' values from table '{table_name}':", error)
+
+        # delete id rows from 'sections' table
+        parent_delete_query = sql.SQL("DELETE FROM sections WHERE id = {sec_id};").format(
+            sec_id=sql.Literal(section_id),
+        )
+        try:
+            cursor.execute(parent_delete_query)
+            print(f"All section_id '{section_id}' values deleted from table 'sections'")
+        except (Exception, psycopg2.Error) as error:
+            print(f"Error while deleting section_id '{section_id}' values from table 'sections':", error)
+
+
 if __name__ == "__main__":
 
     import os
     from const import ROOT_DIR
 
     db_control = DatabaseControl()
+
+
 
     ### creating and listing
 
@@ -181,6 +220,7 @@ if __name__ == "__main__":
 
     # values
     # db_control.delete_all_values_one_table(table_name="phrases")  # ok
+    # db_control.delete_all_values_by_section_id(section_id='grjd21-verse')  # ok
     # db_control.delete_all_values_all_tables()  # ok
     # db_control.list_table_values(table_name="tracks")
 

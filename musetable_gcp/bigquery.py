@@ -159,6 +159,39 @@ class BigQuery:
         print(f"all rows deleted from table {table_id}")
 
 
+    def delete_all_rows_by_section_id(self, section_id):
+
+        # get tables with section_id column
+        dml_statment = f"""
+            SELECT table_name
+            FROM `{self.dataset_id}.INFORMATION_SCHEMA.TABLES`
+            WHERE ddl LIKE "%section_id%";
+        """
+        query_job = self.client.query(dml_statment)
+        table_names = [table[0] for table in query_job.result()]
+
+        # delete section_id rows from tables
+        for table_name in table_names:
+            table_id = f"{self.dataset_id}.{table_name}"
+
+            delete_statement = f"""
+                DELETE FROM {table_id}
+                WHERE section_id="{section_id}";
+            """
+            delete_query_job = self.client.query(delete_statement)
+            delete_query_job.result()
+            print(f"all section_id '{section_id}' rows deleted from table '{table_id}'")
+
+        # delete id rows from 'sections' table
+        sections_delete_statement = f"""
+            DELETE FROM {self.dataset_id}.sections
+            WHERE id="{section_id}";
+        """
+        sections_delete_query_job = self.client.query(sections_delete_statement)
+        sections_delete_query_job.result()
+        print(f"all section_id '{section_id}' rows deleted from table '{self.dataset_id}.sections'")
+
+
     def delete_all_rows_from_all_tables(self):
         tables = self.client.list_tables(self.dataset_id)  # return list of all tables
 
@@ -181,14 +214,16 @@ if __name__ == "__main__":
     dataset_name = "test_dataset"
 
     gbq = BigQuery(PROJECT_ID, dataset_name)
+
+
     # gbq.create_dataset()  # ok
 
     # schema_filepath = os.path.join(ROOT_DIR, 'data', 'gbq_tables_schema.json')
     # gbq.create_tables(schema_filepath)  # ok
 
-    # mxl_filepath = os.path.join(ROOT_DIR, 'data', 'Juban District - Verse.mxl')
-    # playlist_filepath = os.path.join(ROOT_DIR, 'data', 'playlist.csv')
-    # gbq.load_data_from_file(mxl_filepath, playlist_filepath)  # ok
+    mxl_filepath = os.path.join(ROOT_DIR, 'data', 'Juban District - Verse.mxl')
+    playlist_filepath = os.path.join(ROOT_DIR, 'data', 'playlist.csv')
+    gbq.load_data_from_file(mxl_filepath, playlist_filepath)  # ok
 
     # blob_source_name = "data/Juban District - Chorus.mxl"
     # gbq.download_gcs_object(blob_source_name, BUCKET_NAME)  # ok
@@ -196,5 +231,5 @@ if __name__ == "__main__":
 
     # table_name = "phrases"
     # gbq.delete_all_rows_from_table(table_name)  # ok
-
+    # gbq.delete_all_rows_by_section_id('grjd21-verse')  # ok
     # gbq.delete_all_rows_from_all_tables()  # ok
