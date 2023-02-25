@@ -115,7 +115,7 @@ if __name__ == "__main__":
     from const import ROOT_DIR
     from db_control import DatabaseControl
 
-    mxl_filepath = os.path.join(ROOT_DIR, 'data', 'Juban District - Chorus.mxl')
+    mxl_filepath = os.path.join(ROOT_DIR, 'data', 'Juban District - Verse.mxl')
     playlist_filepath = os.path.join(ROOT_DIR, 'data', 'playlist.csv')
 
     inserter = InsertValues(mxl_filepath, playlist_filepath)

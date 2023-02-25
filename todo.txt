@@ -1,3 +1,7 @@
-- make tests folder
-- create function to delete all rows from all tables where 'section_id=something' for musetable
-- same, but for musetable_gcp
+[X] make tests folder
+[X] create function to delete all rows from all tables where 'section_id=something' for musetable
+[X] same, but for musetable_gcp
+[X] make tests for preprocessing data in musetable
+[X] same, but for musetable_ETL_function
+[] make tests for inserting values into PostgreSQL database
+[] make tests for inserting values into BigQuery dataset
