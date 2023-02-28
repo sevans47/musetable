@@ -19,6 +19,14 @@ cloud_functions_logs:
 
 FILE_NAME ?= $(shell bash -c 'read -p "File name to upload: "  input; echo $$input')
 
+musetable_file_to_sql:
+	@python musetable/insert.py ${FILE_NAME}
+
 gcs_upload_file:
 	@clear
 	@gsutil cp data/${FILE_NAME} gs://${BUCKET_NAME}
+
+upload_file_gcs_and_sql:
+	@clear
+	@gsutil cp data/${FILE_NAME} gs://${BUCKET_NAME}
+	@python musetable/insert.py ${FILE_NAME}

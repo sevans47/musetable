@@ -112,10 +112,12 @@ class InsertValues:
 if __name__ == "__main__":
 
     import os
+    import sys
     from const import ROOT_DIR
     from db_control import DatabaseControl
 
-    mxl_filepath = os.path.join(ROOT_DIR, 'data', 'Juban District - Verse.mxl')
+    filename = sys.argv[-1]
+    mxl_filepath = os.path.join(ROOT_DIR, 'data', filename)
     playlist_filepath = os.path.join(ROOT_DIR, 'data', 'playlist.csv')
 
     inserter = InsertValues(mxl_filepath, playlist_filepath)
@@ -127,5 +129,5 @@ if __name__ == "__main__":
 
     db_control = DatabaseControl()
     # db_control.list_tables()
-    db_control.list_table_values(table_name="tracks")
-    db_control.list_table_values(table_name="phrases")
+    db_control.list_table_values(table_name="sections")
+    # db_control.list_table_values(table_name="phrases")
