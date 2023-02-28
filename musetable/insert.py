@@ -116,17 +116,29 @@ if __name__ == "__main__":
     from const import ROOT_DIR
     from db_control import DatabaseControl
 
+    ### insert using makefile function
     filename = sys.argv[-1]
     mxl_filepath = os.path.join(ROOT_DIR, 'data', filename)
     playlist_filepath = os.path.join(ROOT_DIR, 'data', 'playlist.csv')
 
     inserter = InsertValues(mxl_filepath, playlist_filepath)
     inserter.file_to_sql()
+
+    ### insert all .mxl files ###
+    # import glob
+    # mxl_files = glob.glob(os.path.join("data", "*.mxl"))
+    # playlist_filepath = os.path.join(ROOT_DIR, 'data', 'playlist.csv')
+    # for mxl_filepath in mxl_files:
+    #     inserter = InsertValues(mxl_filepath, playlist_filepath)
+    #     inserter.file_to_sql()
+
+
+    ### checking different functions ###
     # table_names, tables_dict = inserter.make_tables_dict()
     # preprocessed_data = inserter.preprocess_sql_data(tables_dict, table_names)
     # inserter.insert_data(preprocessed_data=preprocessed_data, table_names=table_names)
 
-
+    ### check database ###
     db_control = DatabaseControl()
     # db_control.list_tables()
     db_control.list_table_values(table_name="sections")

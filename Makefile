@@ -1,6 +1,9 @@
 PROJECT_ID=audio-projects-363306
 BUCKET_NAME=musetable_test
 
+test:
+	@pytest -v tests/test.py
+
 set_project:
 	@gcloud config set project ${PROJECT_ID}
 
