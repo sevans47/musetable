@@ -124,8 +124,8 @@ class PreprocessXML:
             # note offset = number of quarterLengths from the beginning of the measure
             phrases_list.append(
                 [
-                    first_note_measure.offset + first_note.offset,
-                    last_note_measure.offset + last_note.offset
+                    float(first_note_measure.offset) + float(first_note.offset),
+                    float(last_note_measure.offset) + float(last_note.offset)
                 ]
             )
 
@@ -141,7 +141,7 @@ class PreprocessXML:
         element : any element from using the part.recurse() iterator
         """
         # add measure offset (from beginning of section) to element offset (from beginning of measure)
-        offset = part.measure(element.measureNumber).offset + element.offset
+        offset = float(part.measure(element.measureNumber).offset) + float(element.offset)
         return offset
 
     def get_phrase(self, phrases_list: list, ele_offset: float) -> int:
@@ -309,7 +309,7 @@ class PreprocessXML:
                 harm_phrase_num = self.get_phrase(phrases_list, harm_offset)
                 harmony_dict['phrase_num'].append(harm_phrase_num)
                 harmony_dict['measure'].append(ele.measureNumber)
-                harmony_dict['beat'].append(ele.beat)
+                harmony_dict['beat'].append(float(ele.beat))
                 harmony_dict['offset_ql'].append(harm_offset)
 
             # deal with info applicable to notes and rests
@@ -317,14 +317,14 @@ class PreprocessXML:
 
                 # if note is tie continue / stop, skip note but add duration to previous note
                 if ele.tie and (ele.tie.type == 'stop' or ele.tie.type == 'continue'):
-                    note_dict['duration_ql'][-1] += ele.duration.quarterLength
+                    note_dict['duration_ql'][-1] += float(ele.duration.quarterLength)
                     continue
 
                 note_dict['section_id'].append(section_id)
                 note_dict['note_name'].append(ele.name)
-                note_dict['duration_ql'].append(ele.duration.quarterLength)
+                note_dict['duration_ql'].append(float(ele.duration.quarterLength))
                 note_dict['measure'].append(ele.measureNumber)
-                note_dict['beat'].append(ele.beat)
+                note_dict['beat'].append(float(ele.beat))
 
                 note_offset = self.get_offset(part, ele)
                 note_dict['offset_ql'].append(note_offset)

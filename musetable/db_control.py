@@ -221,8 +221,8 @@ if __name__ == "__main__":
     # values
     # db_control.delete_all_values_one_table(table_name="phrases")  # ok
     # db_control.delete_all_values_by_section_id(section_id='grjd21-verse')  # ok
-    # db_control.delete_all_values_all_tables()  # ok
-    # db_control.list_table_values(table_name="tracks")
+    db_control.delete_all_values_all_tables()  # ok
+    db_control.list_table_values(table_name="tracks")
 
     # tables
     # db_control.delete_all_tables() #ok
