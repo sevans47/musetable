@@ -2,7 +2,7 @@
 
 musetable provides a way of turning musical scores into tabular data, allowing for an in-depth and unique analysis of the music.
 
-(add image of score to table later)
+![sheetmusic_to_table](img/sm_to_table.jpg)
 
 It was born from my curiosity about some of the songs in my Spotify Top Songs of 2022 playlist, and desiring high quality, customized music data that simply isn't available.  I created transcriptions of the songs, and used musetable to help me analyze them as part musician, part data analyst.
 
@@ -19,7 +19,7 @@ There are 4 steps to the musetable data pipeline:
 ## create a score
 Notation software such as the open source MuseScore makes it easy and fast to create a score.  Currently, musetable only accepts lead-sheet type scores, meaning the score should consist of a single melody line with accompanying chord symbols, like so:
 
-(add image later)
+![lead_sheet_example](img/ltdo_sheet_music.jpg)
 
 Two notes about creating the score in order to get the most out of musetable:
   1. Slurs are used to denote musical phrases, which can be thought of as a group of notes to make a kind of musical sentence.  Avoid using slurs to indicate legato or performance instructions.  However, tieing notes is ok.
