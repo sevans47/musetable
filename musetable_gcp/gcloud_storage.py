@@ -116,7 +116,7 @@ class GCloudStorage:
 if __name__ == "__main__":
     from const import PROJECT_ID, BUCKET_NAME, ROOT_DIR
 
-    from musetable.preprocess import PreprocessXML
+    from musetable_db.preprocess import PreprocessXML
 
     gcs = GCloudStorage()
 
