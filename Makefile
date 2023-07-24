@@ -1,6 +1,9 @@
 PROJECT_ID=audio-projects-363306
 BUCKET_NAME=musetable_test
 
+streamlit_test:
+	@streamlit run musetable/streamlit_test/app.py
+
 test:
 	@pytest -v tests/test.py
 

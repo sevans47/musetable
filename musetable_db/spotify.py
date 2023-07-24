@@ -11,7 +11,7 @@ import requests
 import pandas as pd
 import os
 
-from musetable.const import PROJECT_ID, SPOTIFY_SECRET_ID, SPOTIFY_VERSION_ID, PLAYLIST_NAME
+from musetable_db.const import PROJECT_ID, SPOTIFY_SECRET_ID, SPOTIFY_VERSION_ID, PLAYLIST_NAME
 
 class SpotifyClient:
     """SpotifyClient performs operations using the Spotify API."""

@@ -5,7 +5,7 @@ Create datasets and load data using Google BigQuery
 from google.cloud import bigquery
 from google.cloud import storage
 from google.api_core import exceptions
-from musetable.preprocess import PreprocessXML
+from musetable_db.preprocess import PreprocessXML
 import json
 import os
 

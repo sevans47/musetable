@@ -3,10 +3,10 @@ Insert data into database
 """
 import psycopg2
 from psycopg2 import sql, extras
-from musetable.db_decorator import PostgresDB
-from musetable.preprocess import PreprocessXML
+from musetable_db.db_decorator import PostgresDB
+from musetable_db.preprocess import PreprocessXML
 
-from musetable.const import PROJECT_ID, SECRET_ID, VERSION_ID
+from musetable_db.const import PROJECT_ID, SECRET_ID, VERSION_ID
 
 db = PostgresDB(PROJECT_ID, SECRET_ID, VERSION_ID)
 

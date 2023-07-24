@@ -1,7 +1,7 @@
 import os
 
-from musetable.const import ROOT_DIR
-from musetable.preprocess import PreprocessXML as Preprocess
+from musetable_db.const import ROOT_DIR
+from musetable_db.preprocess import PreprocessXML as Preprocess
 from musetable_ETL_function.preprocess_cf import PreprocessXML as Preprocess_cf
 
 mxl_filepath = os.path.join(ROOT_DIR, 'tests', 'test_data', 'Juban District - Verse.mxl')

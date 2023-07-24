@@ -4,9 +4,9 @@ Control various operations on a database cluster as a superuser
 
 import psycopg2
 from psycopg2 import sql
-from musetable.db_decorator import PostgresDB
+from musetable_db.db_decorator import PostgresDB
 
-from musetable.const import PROJECT_ID, SECRET_ID, VERSION_ID
+from musetable_db.const import PROJECT_ID, SECRET_ID, VERSION_ID
 
 db = PostgresDB(PROJECT_ID, SECRET_ID, VERSION_ID)
 
