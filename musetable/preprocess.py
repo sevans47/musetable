@@ -469,21 +469,137 @@ class PreprocessXML:
 
 
     # the following functions are for inputing values into the 'chords' dictionary
+    def get_chord_pitches(self, chord: Union[m21.harmony.ChordSymbol, m21.harmony.NoChord]) -> str:
+        return ",".join([p.name.lower() for p in chord.notes])
+
+
+    def get_chord_degrees(self, chord: Union[m21.harmony.ChordSymbol, m21.harmony.NoChord]) -> str:
+        return ",".join([d for d in chord._degreesList])
+
+
+    def get_prev_chord_rb_dist(self, curr_root: int, curr_bass: int, prev_root: int, prev_bass: int) -> tuple:
+
+        # return -100 if current chord is first chord or No Chord, or previous chord is No Chord
+        if -1 in locals().values():
+            return (-100, -100)
+
+        # get absolute distance
+        prev_root_dist = np.abs([curr_root - prev_root, (curr_root - 12) - prev_root, curr_root - (prev_root-12)]).min()
+        prev_bass_dist = np.abs([curr_bass - prev_bass, (curr_bass - 12) - prev_bass, curr_bass - (prev_bass-12)]).min()
+
+        # make it negative if current root / bass is lower than prev root / bass
+        prev_root_dist = -prev_root_dist if prev_root > curr_root else prev_root_dist
+        prev_bass_dist = -prev_bass_dist if prev_bass > curr_bass else prev_bass_dist
+
+        return (prev_root_dist, prev_bass_dist)
+
+
+    def input_chord_end_offset_info(self, chord_start_offsets: list, track_duration: float, m1b1_factor: float) -> None:
+        "Input chord_dur, chord_end_offset, and chord_end_m1b1_offset lists into data_dict's chords dictionary"
+
+        # create numpy arrays
+        chord_start_offsets = np.array(chord_start_offsets)
+        chord_end_offsets = np.append(chord_start_offsets[1:], track_duration)
+        chord_durations = chord_end_offsets - chord_start_offsets
+        chord_end_m1b1_offsets = chord_end_offsets - m1b1_factor
+        # return (chord_durations.tolist(), chord_end_offsets.tolist(), chord_end_m1b1_offsets.tolist())
+
+        # insert into data_dict
+        self.data_dict['chords']['chord_dur'] = chord_durations.tolist()
+        self.data_dict['chords']['chord_end_offset'] = chord_end_offsets.tolist()
+        self.data_dict['chords']['chord_end_m1b1_offset'] = chord_end_m1b1_offsets.tolist()
+
+        return None
+
+
+    def chord_input(self, ele: Union[m21.harmony.ChordSymbol, m21.harmony.NoChord]) -> None:
+        track_offset = self.get_track_offset(ele)
+
+        # update chord id - no checks needed, do for every chord symbol, even if the chord is repeated
+        self.id_dict['current_chord'] = ele
+        self.id_dict['current_chord_id'] = self.create_ids(
+            self.id_prefix, mode='chord', ele=ele
+        )
+
+        # update hp id - only need to check if chord's offset is in hp_start_offsets
+        if track_offset in self.offset_dict['hp_start_offsets']:
+            self.id_dict['current_hp_index'] += 1
+            self.id_dict['current_hp_id'] = self.create_ids(
+                self.id_prefix, mode='hp', index_num=self.id_dict['current_hp_index'],
+                offsets=self.offset_dict['hp_start_offsets']
+            )
+
+        # input data into chords dictionary
+        self.data_dict['chords']['chord_id'].append(self.id_dict['current_chord_id'])
+        self.data_dict['chords']['sec_id'].append(self.id_dict['current_sec_id'])
+        self.data_dict['chords']['hp_id'].append(self.id_dict['current_hp_id'])
+        self.data_dict['chords']['chord_name'].append(ele.figure)
+        self.data_dict['chords']['chord_kind'].append(ele.chordKind)
+        ele_root = ele.root()
+        ele_bass = ele.bass()
+        self.data_dict['chords']['chord_root_name'].append(ele_root.name if ele_root is not None else '-1')
+        self.data_dict['chords']['chord_bass_name'].append(ele_bass.name if ele_bass is not None else '-1')
+        self.data_dict['chords']['chord_root_pc'].append(ele_root.pitchClass if ele_root is not None else -1)  # None if it's N.C. - for prev_chord stuff later
+        self.data_dict['chords']['chord_bass_pc'].append(ele_bass.pitchClass if ele_bass is not None else -1)  # None if it's N.C.
+        self.data_dict['chords']['pitches'].append(
+            self.get_chord_pitches(ele) if isinstance(ele, m21.harmony.ChordSymbol) else None
+        )
+        self.data_dict['chords']['degrees'].append(
+            self.get_chord_degrees(ele) if isinstance(ele, m21.harmony.ChordSymbol) else None
+        )
+        self.data_dict['chords']['measure'].append(ele.measureNumber)
+        self.data_dict['chords']['beat'].append(ele.beat)
+        self.data_dict['chords']['chord_start_offset'].append(self.get_track_offset(ele))
+        self.data_dict['chords']['chord_start_m1b1_offset'].append(self.get_track_offset(ele) - self.m1b1_factor)
+        self.data_dict['chords']['n_pitches'].append(len(ele.notes))
+
+        try:
+            prev_chord_root = self.data_dict['chords']['chord_root_pc'][-2]  # -2 because current chord's root has already been added
+            prev_chord_bass = self.data_dict['chords']['chord_bass_pc'][-2]
+            prev_chord_quality = self.data_dict['chords']['chord_kind'][-2]
+        except IndexError:  # if we're at the beginning of the piece
+            prev_chord_root = -1
+            prev_chord_bass = -1
+            prev_chord_quality = 'none'  # 'none' is what m21 returns from NoChord().chordKind
+
+        prev_root_dist, prev_bass_dist = self.get_prev_chord_rb_dist(
+            self.data_dict['chords']['chord_root_pc'][-1],
+            self.data_dict['chords']['chord_bass_pc'][-1],
+            prev_chord_root,
+            prev_chord_bass
+        )
+        self.data_dict['chords']['prev_chord_elongation'].append(
+            1 if any((prev_root_dist == 0, prev_bass_dist == 0)) else 0
+        )
+        self.data_dict['chords']['prev_chord_root_dist'].append(prev_root_dist)  # -100 means NaN
+        self.data_dict['chords']['prev_chord_bass_dist'].append(prev_bass_dist)
+        self.data_dict['chords']['prev_chord_rb_same_qual_diff'].append(
+            1 if all((prev_root_dist == 0, prev_bass_dist==0, prev_chord_quality!=ele.chordKind)) else 0
+        )
+        self.data_dict['chords']['prev_chord_root_same_bass_diff'].append(
+            1 if all((prev_root_dist == 0, prev_bass_dist != 0)) else 0
+        )
+        self.data_dict['chords']['prev_chord_bass_same_root_diff'].append(
+            1 if all((prev_root_dist != 0, prev_bass_dist == 0)) else 0
+        )
+
+        return None
 
 
     # main function for inputing all data into data_dict
     def input_all(self):
 
+        # loop through part_recurse and input data into the notes and chords dictionaries
         for ele in self.part_recurse:
             if isinstance(ele, m21.note.Rest) or isinstance(ele, m21.note.Note):
                 self.note_rest_input(ele)
-                # print(
-                #     len(self.data_dict['notes']['midi_num']),
-                #     self.data_dict['notes']['sec_id'][-1],
-                #     self.data_dict['notes']['sec_start_note'][-1],
-                #     self.data_dict['notes']['sec_end_note'][-1],
-                #     self.data_dict['notes']['midi_num'][-1],
-                # )
+
+            if isinstance(ele, m21.harmony.ChordSymbol) or isinstance(ele, m21.harmony.NoChord):
+                self.chord_input(ele)
+
+        # finish inputing values into chords dictionary that we couldn't input in loop
+        self.input_chord_end_offset_info(self.data_dict['chords']['chord_start_offset'], self.track_dur, self.m1b1_factor)
+
 
 
     def validate_input(self):
@@ -505,4 +621,6 @@ if __name__ == "__main__":
     # print(len(preproc.data_dict['notes']['sec_start_note']))
     # print(preproc.data_dict['notes']['sec_end_note'])
 
-    # print(preproc.data_dict['notes'])
+    for v in preproc.data_dict['chords'].values():
+        print(len(v))
+    # print(preproc.data_dict['chords'])
