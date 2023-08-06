@@ -7,7 +7,10 @@ from const import ROOT_DIR, SCOPE, DATA_DICT
 class PreprocessXML:
     """PreprocessXML converts a MusicXML file into a dictionary"""
 
-    def __init__(self, mxl_filepath: str):
+    def __init__(self, mxl_filepath: str, comprehensive=False):
+
+        # if comprehensive=False, returns basic tables. If True, returns additional tables
+        self.comprehensive = comprehensive
 
         # get m21 part from mxl file
         self.part, self.part_recurse = self.load_mxl_from_file(mxl_filepath)
@@ -117,16 +120,27 @@ class PreprocessXML:
                 first_measure = ele
                 first_measure_dur = ele.duration.quarterLength
                 first_measure_is_pickup = True if ele.measureNumber == 0 else False
-                key_sig = [sig for sig in first_measure.elements if type(sig) == m21.key.KeySignature]
-                time_sig = [sig for sig in first_measure.elements if type(sig) == m21.meter.TimeSignature]
+                try:
+                    key_sig = [sig for sig in first_measure.elements if type(sig) == m21.key.KeySignature][0]
+                except IndexError:
+                    key_sig = None
+                try:
+                    time_sig = [sig for sig in first_measure.elements if type(sig) == m21.meter.TimeSignature][0]
+                except IndexError:
+                    time_sig = None
+                try:
+                    metronome_mark = [tmpo for tmpo in first_measure.elements if type(tmpo) == m21.tempo.MetronomeMark][0]
+                except IndexError:
+                    metronome_mark = None
                 break
 
         return {
             'first_measure': first_measure,
             'first_measure_dur': first_measure_dur,
             'first_measure_is_pickup': first_measure_is_pickup,
-            'key_signature': key_sig,
-            'time_signature': time_sig
+            'key_sig_n_sharps': key_sig,
+            'time_sig': time_sig,
+            'metronome_mark': metronome_mark,
         }
 
 
@@ -218,6 +232,25 @@ class PreprocessXML:
 
     def get_track_offset(self, ele):
         return float(ele.activeSite.offset + ele.offset)
+
+
+    # the following class methods are for inputing values in the 'tracks' and 'sections' dictionary
+    def track_input(self) -> None:
+        "Input values into 'tracks' dictionary"
+        self.data_dict['tracks']['track_id'].append(self.create_ids(id_prefix=self.id_prefix, mode='track'))
+        self.data_dict['tracks']['artist'].append(self.artist)
+        self.data_dict['tracks']['track_name'].append(self.track_name)
+        self.data_dict['tracks']['key_sig_n_sharps'].append(
+            self.first_measure_dict['key_sig_n_sharps'].sharps if self.first_measure_dict['key_sig_n_sharps'] is not None else -100
+        )
+        self.data_dict['tracks']['time_sig'].append(
+            self.first_measure_dict['time_sig'].ratioString if self.first_measure_dict['time_sig'] is not None else '-1'
+        )
+        mm = self.first_measure_dict['metronome_mark']
+        self.data_dict['tracks']['bpm'].append(mm.number if mm is not None else float(0))
+        self.data_dict['tracks']['bpm_ql'].append(mm.referent.quarterLength if mm is not None else float(0))
+        self.data_dict['tracks']['track_total_dur'].append(self.track_dur)
+
 
 
     # the following class methods are for inputing values into the 'notes' dictionary
@@ -468,7 +501,7 @@ class PreprocessXML:
         return None
 
 
-    # the following functions are for inputing values into the 'chords' dictionary
+    # the following class methods are for inputing values into the 'chords' dictionary
     def get_chord_pitches(self, chord: Union[m21.harmony.ChordSymbol, m21.harmony.NoChord]) -> str:
         return ",".join([p.name.lower() for p in chord.notes])
 
@@ -600,6 +633,14 @@ class PreprocessXML:
         # finish inputing values into chords dictionary that we couldn't input in loop
         self.input_chord_end_offset_info(self.data_dict['chords']['chord_start_offset'], self.track_dur, self.m1b1_factor)
 
+        # input values into tracks, sections, melodic_phrases, and harmonic_phrases dictionaries
+        self.track_input()
+
+        # create additional tables if 'comprehensive' arg is set to True when class is initialized
+        if self.comprehensive:
+            pass
+
+
 
 
     def validate_input(self):
@@ -621,6 +662,6 @@ if __name__ == "__main__":
     # print(len(preproc.data_dict['notes']['sec_start_note']))
     # print(preproc.data_dict['notes']['sec_end_note'])
 
-    for v in preproc.data_dict['chords'].values():
-        print(len(v))
-    # print(preproc.data_dict['chords'])
+    # for v in preproc.data_dict['chords'].values():
+    #     print(len(v))
+    print(preproc.data_dict['tracks'])
