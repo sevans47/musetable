@@ -237,6 +237,7 @@ class PreprocessXML:
     # the following class methods are for inputing values in the 'tracks' and 'sections' dictionary
     def track_input(self) -> None:
         "Input values into 'tracks' dictionary"
+
         self.data_dict['tracks']['track_id'].append(self.create_ids(id_prefix=self.id_prefix, mode='track'))
         self.data_dict['tracks']['artist'].append(self.artist)
         self.data_dict['tracks']['track_name'].append(self.track_name)
@@ -251,6 +252,42 @@ class PreprocessXML:
         self.data_dict['tracks']['bpm_ql'].append(mm.referent.quarterLength if mm is not None else float(0))
         self.data_dict['tracks']['track_total_dur'].append(self.track_dur)
 
+        return None
+
+
+    def section_input(self) -> None:
+        "input values into 'sections' dictionary"
+
+        # create list of section ids
+        sec_ids = [
+            self.create_ids(
+                self.id_prefix,
+                mode='sec',
+                ele=self.rehearsal_marks[i],
+                offsets=self.offset_dict['sec_start_offsets'],
+                index_num=i
+                ) for i in range(0, len(self.rehearsal_marks))
+            ]
+
+        # create list of number of melodic phrases in each section
+        n_mps = [
+            np.sum(
+                np.greater_equal(self.offset_dict['mp_start_offsets'], sec_start) & np.less(self.offset_dict['mp_start_offsets'], sec_end)
+            ) for sec_start, sec_end in zip(self.offset_dict['sec_start_offsets'], self.offset_dict['sec_end_offsets'])
+        ]
+
+        # input values into 'sections' dictionary
+        self.data_dict['sections']['sec_id'] = sec_ids
+        self.data_dict['sections']['track_id'] = [self.create_ids(self.id_prefix, mode='track')] * len(self.rehearsal_marks)
+        self.data_dict['sections']['sec_name'] = [rm.content for rm in self.rehearsal_marks]
+        self.data_dict['sections']['sec_total_dur'] = self.offset_dict['sec_durs'].tolist()
+        self.data_dict['sections']['sec_n_mp'] = n_mps
+        self.data_dict['sections']['sec_start_offset'] = self.offset_dict['sec_start_offsets'].tolist()
+        self.data_dict['sections']['sec_end_offset']= self.offset_dict['sec_end_offsets'].tolist()
+        self.data_dict['sections']['sec_start_m1b1_offset'] = (self.offset_dict['sec_start_offsets'] - self.m1b1_factor).tolist()
+        self.data_dict['sections']['sec_end_m1b1_offset'] = (self.offset_dict['sec_end_offsets'] - self.m1b1_factor).tolist()
+
+        return None
 
 
     # the following class methods are for inputing values into the 'notes' dictionary
@@ -635,6 +672,7 @@ class PreprocessXML:
 
         # input values into tracks, sections, melodic_phrases, and harmonic_phrases dictionaries
         self.track_input()
+        self.section_input()
 
         # create additional tables if 'comprehensive' arg is set to True when class is initialized
         if self.comprehensive:
@@ -664,4 +702,4 @@ if __name__ == "__main__":
 
     # for v in preproc.data_dict['chords'].values():
     #     print(len(v))
-    print(preproc.data_dict['tracks'])
+    print(preproc.data_dict['sections'])
