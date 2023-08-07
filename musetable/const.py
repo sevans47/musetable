@@ -229,7 +229,6 @@ DATA_DICT = {
         'sec_id': [],
         'mp_num_in_sec': [],
         'mp_total_dur': [],
-        'mp_n_notes': [],
         'mp_start_offset': [],
         'mp_end_offset': [],
         'mp_start_m1b1_offset': [],
@@ -237,6 +236,7 @@ DATA_DICT = {
     },
     'melodic_phrases_details': {
         'mp_id': [],
+        'mp_n_notes': [],
         'mp_range_interval': [],
         'mp_range_midi': [],
         'mp_highest_note': [],
@@ -300,7 +300,6 @@ DATA_DICT = {
         'sec_id': [],
         'hp_num_in_sec': [],
         'hp_total_dur': [],
-        'hp_n_chords': [],
         'hp_start_offset': [],
         'hp_end_offset': [],
         'hp_start_m1b1_offset': [],
@@ -308,6 +307,7 @@ DATA_DICT = {
     },
     'harmonic_phrases_details': {
         'hp_id': [],
+        'hp_n_chords': [],
         'hp_start_chord_id': [],
         'hp_end_chord_id': [],
         'hp_start_section_offset': [],

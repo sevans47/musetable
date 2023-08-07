@@ -9,7 +9,7 @@ class PreprocessXML:
 
     def __init__(self, mxl_filepath: str, comprehensive=False):
 
-        # if comprehensive=False, returns basic tables. If True, returns additional tables
+        # if comprehensive=False, returns basic tables. If True, returns additional tables as well
         self.comprehensive = comprehensive
 
         # get m21 part from mxl file
@@ -234,7 +234,101 @@ class PreprocessXML:
         return float(ele.activeSite.offset + ele.offset)
 
 
-    # the following class methods are for inputing values in the 'tracks' and 'sections' dictionary
+    # the following class methods are for inputing values in the 'tracks', 'sections', 'melodic_phrases',
+    # and 'harmonic_phrases' dictionaries
+    def make_section_ids(self) -> list:
+        "make a list of all section ids"
+
+        return [self.create_ids(
+            self.id_prefix,
+            mode='sec',
+            ele=self.rehearsal_marks[i],
+            offsets=self.offset_dict['sec_start_offsets'],
+            index_num=i
+            ) for i in range(0, len(self.rehearsal_marks))
+        ]
+
+
+    def make_mp_ids(self) -> list:
+        "make a list of all mp ids"
+
+        return [self.create_ids(
+            self.id_prefix,
+            mode='mp',
+            offsets=self.offset_dict['mp_start_offsets'],
+            index_num=i
+            ) for i in range(0, len(self.spanners))
+        ]
+
+
+    def make_hp_ids(self) -> list:
+        "make a list of all hp ids"
+
+        return [
+            self.create_ids(
+                self.id_prefix, mode='hp', index_num=i, offsets=self.offset_dict['hp_start_offsets']
+            ) for i in range(len(self.expression_marks))
+        ]
+
+
+    def get_n_mps_per_section(self) -> list:
+        "make a list of the number of mp's for each section"
+
+        return [np.sum(
+                    np.greater_equal(self.offset_dict['mp_start_offsets'], sec_start) & np.less(self.offset_dict['mp_start_offsets'], sec_end)
+                ) for sec_start, sec_end in zip(self.offset_dict['sec_start_offsets'], self.offset_dict['sec_end_offsets'])
+        ]
+
+
+    def get_n_hps_per_section(self) -> list:
+        "make a list of the number of hp's for each section"
+
+        return [np.sum(
+                    np.greater_equal(self.offset_dict['hp_start_offsets'], sec_start) & np.less(self.offset_dict['hp_start_offsets'], sec_end)
+                ) for sec_start, sec_end in zip(self.offset_dict['sec_start_offsets'], self.offset_dict['sec_end_offsets'])
+        ]
+
+
+    def make_sec_id_list_for_mp_dict(self) -> tuple:
+        """return a tuple of two lists - one that has section ids for the mp dict, and one that counts the mp
+        for each section.  Both of these lists should be added to the melodic_phrases dict.
+        """
+
+        n_mps_per_section = self.get_n_mps_per_section()
+        section_ids = self.make_section_ids()
+
+        mp_section_ids = []
+        mp_num_in_sec_list = []
+        for n_mp, section_id in zip(n_mps_per_section, section_ids):
+            mp_num_in_sec = 1
+            for i in range(n_mp):
+                mp_section_ids.append(section_id)
+                mp_num_in_sec_list.append(mp_num_in_sec)
+                mp_num_in_sec += 1
+
+        return (mp_section_ids, mp_num_in_sec_list)
+
+
+    def make_sec_id_list_for_hp_dict(self) -> tuple:
+        """return a tuple of two lists - one that has section ids for the hp dict, and one that counts the hp
+        for each section.  Both of these lists should be added to the harmonic_phrases dict.
+        """
+
+        n_hps_per_section = self.get_n_hps_per_section()
+        section_ids = self.make_section_ids()
+
+        hp_section_ids = []
+        hp_num_in_sec_list = []
+        for n_hp, section_id in zip(n_hps_per_section, section_ids):
+            hp_num_in_sec = 1
+            for i in range(n_hp):
+                hp_section_ids.append(section_id)
+                hp_num_in_sec_list.append(hp_num_in_sec)
+                hp_num_in_sec += 1
+
+        return (hp_section_ids, hp_num_in_sec_list)
+
+
     def track_input(self) -> None:
         "Input values into 'tracks' dictionary"
 
@@ -259,22 +353,10 @@ class PreprocessXML:
         "input values into 'sections' dictionary"
 
         # create list of section ids
-        sec_ids = [
-            self.create_ids(
-                self.id_prefix,
-                mode='sec',
-                ele=self.rehearsal_marks[i],
-                offsets=self.offset_dict['sec_start_offsets'],
-                index_num=i
-                ) for i in range(0, len(self.rehearsal_marks))
-            ]
+        sec_ids = self.make_section_ids()
 
         # create list of number of melodic phrases in each section
-        n_mps = [
-            np.sum(
-                np.greater_equal(self.offset_dict['mp_start_offsets'], sec_start) & np.less(self.offset_dict['mp_start_offsets'], sec_end)
-            ) for sec_start, sec_end in zip(self.offset_dict['sec_start_offsets'], self.offset_dict['sec_end_offsets'])
-        ]
+        n_mps = self.get_n_mps_per_section()
 
         # input values into 'sections' dictionary
         self.data_dict['sections']['sec_id'] = sec_ids
@@ -286,6 +368,42 @@ class PreprocessXML:
         self.data_dict['sections']['sec_end_offset']= self.offset_dict['sec_end_offsets'].tolist()
         self.data_dict['sections']['sec_start_m1b1_offset'] = (self.offset_dict['sec_start_offsets'] - self.m1b1_factor).tolist()
         self.data_dict['sections']['sec_end_m1b1_offset'] = (self.offset_dict['sec_end_offsets'] - self.m1b1_factor).tolist()
+
+        return None
+
+
+    def melodic_phrases_input(self) -> None:
+        "input values into the 'melodic_phrases' dictionary"
+
+        mp_ids = self.make_mp_ids()
+        sec_id_list_for_mp_dict, mp_num_in_sec = self.make_sec_id_list_for_mp_dict()
+
+        self.data_dict['melodic_phrases']['mp_id'] = mp_ids
+        self.data_dict['melodic_phrases']['sec_id'] = sec_id_list_for_mp_dict
+        self.data_dict['melodic_phrases']['mp_num_in_sec'] = mp_num_in_sec
+        self.data_dict['melodic_phrases']['mp_total_dur'] = self.offset_dict['mp_durs'].tolist()
+        self.data_dict['melodic_phrases']['mp_start_offset'] = self.offset_dict['mp_start_offsets'].tolist()
+        self.data_dict['melodic_phrases']['mp_end_offset'] = self.offset_dict['mp_end_note_end_offsets'].tolist()
+        self.data_dict['melodic_phrases']['mp_start_m1b1_offset'] = (self.offset_dict['mp_start_offsets'] - self.m1b1_factor).tolist()
+        self.data_dict['melodic_phrases']['mp_end_m1b1_offset'] = (self.offset_dict['mp_end_note_end_offsets'] - self.m1b1_factor).tolist()
+
+        return None
+
+
+    def harmonic_phrases_input(self) -> None:
+        "input values into the 'harmonic_phrases' dictionary"
+
+        hp_ids = self.make_hp_ids()
+        hp_section_ids, hp_num_in_sec_list = self.make_sec_id_list_for_hp_dict()
+
+        self.data_dict['harmonic_phrases']['hp_id'] = hp_ids
+        self.data_dict['harmonic_phrases']['sec_id'] = hp_section_ids
+        self.data_dict['harmonic_phrases']['hp_num_in_sec'] = hp_num_in_sec_list
+        self.data_dict['harmonic_phrases']['hp_total_dur'] = self.offset_dict['hp_durs'].tolist()
+        self.data_dict['harmonic_phrases']['hp_start_offset'] = self.offset_dict['hp_start_offsets'].tolist()
+        self.data_dict['harmonic_phrases']['hp_end_offset'] = self.offset_dict['hp_end_offsets'].tolist()
+        self.data_dict['harmonic_phrases']['hp_start_m1b1_offset'] = (self.offset_dict['hp_start_offsets'] - self.m1b1_factor).tolist()
+        self.data_dict['harmonic_phrases']['hp_end_m1b1_offset'] = (self.offset_dict['hp_end_offsets'] - self.m1b1_factor).tolist()
 
         return None
 
@@ -673,6 +791,8 @@ class PreprocessXML:
         # input values into tracks, sections, melodic_phrases, and harmonic_phrases dictionaries
         self.track_input()
         self.section_input()
+        self.melodic_phrases_input()
+        self.harmonic_phrases_input()
 
         # create additional tables if 'comprehensive' arg is set to True when class is initialized
         if self.comprehensive:
@@ -700,6 +820,7 @@ if __name__ == "__main__":
     # print(len(preproc.data_dict['notes']['sec_start_note']))
     # print(preproc.data_dict['notes']['sec_end_note'])
 
-    # for v in preproc.data_dict['chords'].values():
-    #     print(len(v))
-    print(preproc.data_dict['sections'])
+    for v in preproc.data_dict['harmonic_phrases'].values():
+        print(len(v))
+    # print(preproc.data_dict['sections'])
+    print(preproc.data_dict['harmonic_phrases'])
