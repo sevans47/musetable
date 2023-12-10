@@ -2,7 +2,7 @@ import music21 as m21
 from typing import Union
 import numpy as np
 
-from const import ROOT_DIR, SCOPE, DATA_DICT
+from const import SCOPE, BASIC_TABLES, NULLABLE_COLUMNS, DATA_DICT, DATA_TYPE_DICT
 
 class PreprocessXML:
     """PreprocessXML converts a MusicXML file into a dictionary"""
@@ -28,6 +28,15 @@ class PreprocessXML:
         self.expression_marks = self.make_expression_marks_list(self.part_recurse)  # determines harmonic phrases
         self.offset_dict = self.make_offset_dict(self.rehearsal_marks, self.spanners, self.expression_marks)
         self.data_dict = DATA_DICT
+        self.data_type_dict = DATA_TYPE_DICT
+        self.nullable_columns = NULLABLE_COLUMNS
+
+        # remove unneeded tables from data_dict
+        if self.comprehensive == False:
+            for table in list(self.data_dict.keys()):
+                if table not in BASIC_TABLES:
+                    self.data_dict.pop(table, None)
+                    self.data_type_dict.pop(table, None)
 
         # # update id_dict
         # self.id_dict['current_sec_id'] = self.create_ids(
@@ -274,9 +283,10 @@ class PreprocessXML:
     def get_n_mps_per_section(self) -> list:
         "make a list of the number of mp's for each section"
 
-        return [np.sum(
-                    np.greater_equal(self.offset_dict['mp_start_offsets'], sec_start) & np.less(self.offset_dict['mp_start_offsets'], sec_end)
-                ) for sec_start, sec_end in zip(self.offset_dict['sec_start_offsets'], self.offset_dict['sec_end_offsets'])
+        return [
+            int(np.sum(
+                np.greater_equal(self.offset_dict['mp_start_offsets'], sec_start) & np.less(self.offset_dict['mp_start_offsets'], sec_end)
+            )) for sec_start, sec_end in zip(self.offset_dict['sec_start_offsets'], self.offset_dict['sec_end_offsets'])
         ]
 
 
@@ -418,7 +428,7 @@ class PreprocessXML:
 
     def get_dist_from_root(self, ele: m21.note.Note, current_chord: m21.harmony.ChordSymbol) -> int:
 
-        # get pitch classes for note and chord root and put the in a numpy array
+        # get pitch classes for note and chord root and put them in a numpy array
         pc_array = np.array([ele.pitch.pitchClass, current_chord.root().pitchClass])
 
         # check if the difference is greater than 6 (ie max difference between pitch classes)
@@ -426,7 +436,7 @@ class PreprocessXML:
             # subtract the larger number by 12, making the distance between 0-6
             pc_array[pc_array.argmax()] = pc_array[pc_array.argmax()] - 12
 
-        return np.abs(np.diff(pc_array))[0]
+        return int(np.abs(np.diff(pc_array))[0])
 
 
     def get_prev_note_dir(self, prev_note_distance: int) -> str:
@@ -679,7 +689,7 @@ class PreprocessXML:
         prev_root_dist = -prev_root_dist if prev_root > curr_root else prev_root_dist
         prev_bass_dist = -prev_bass_dist if prev_bass > curr_bass else prev_bass_dist
 
-        return (prev_root_dist, prev_bass_dist)
+        return (int(prev_root_dist), int(prev_bass_dist))
 
 
     def input_chord_end_offset_info(self, chord_start_offsets: list, track_duration: float, m1b1_factor: float) -> None:
@@ -799,28 +809,56 @@ class PreprocessXML:
             pass
 
 
+    def validate_input(self) -> None:
+        """
+        checks the following:
+            a) all lists in each dict are same length,
+            b) list length is > 0 (if, for example, len(self.rehearsal_marks) == 0, maybe some section lists will be empty)
+            c) list data types are correct
+        TODO (maybe...):
+            d) could check that number of unique values in a given list matches something (e.g. the sum of notes['sec_end_note'] should be the same length as self.rehearsal_marks)
+        """
+        tables = list(self.data_dict.keys())
 
+        for table in tables:
 
-    def validate_input(self):
-        # TODO: check the following:
-        # a) all lists in each dict are same length,
-        # b) list length is > 0 (if, for example, len(self.rehearsal_marks) == 0, maybe some section lists will be empty)
-        # c) list data types are correct
-        # d) if time - could check that number of unique values in a given list matches something (e.g. the sum of notes['sec_end_note'] should be the same length as self.rehearsal_marks)
-        pass
+            col_lengths = [len(col) for col in self.data_dict[table].values()]
+            col_types = {col_name: list(set((type(col) for col in column))) for col_name, column in self.data_dict[table].items()}
+
+            # check each column is same length in each table
+            assert(len(set(col_lengths)) == 1), f"number of values is not the same for each column in {table}"
+
+            # check that tables are longer than 0
+            assert(col_lengths[0] > 0), f"table {table} has no values"
+
+            # check that columns are correct data type
+            for col_name, col_type in col_types.items():
+                if len(col_type) == 1:
+                    assert(col_type[0] == self.data_type_dict[table][col_name]), f"'{col_name}' in table '{table}' is type {col_type[0]}, expected type {self.data_type_dict[table][col_name]}"
+
+                else:  # nullable columns
+                    assert(type(None) in col_type), f"Value Error: '{col_name}' in table '{table}' has multiple types: {[print(c_type) for c_type in col_type]}"
+                    assert((table, col_name) in self.nullable_columns), f"Value Error: '{col_name}' in table '{table}' has null values, but isn't in list of nullable columns"
+                    assert(set(col_type) == set((self.data_type_dict[table][col_name], type(None)))), f"Value Error: '{col_name}' in table '{table}' has data types {col_type}, expected {self.data_type_dict[table][col_name]}"
+
+        print('all values validated!')
+
+        return None
 
 
 if __name__ == "__main__":
     import os
+    from const import ROOT_DIR
 
     xml_filepath = os.path.join(ROOT_DIR, "data", "pasta piece.mxl")
-    preproc = PreprocessXML(xml_filepath)
+    preproc = PreprocessXML(xml_filepath, comprehensive=False)
     preproc.input_all()
+    preproc.validate_input()
     # print(preproc.offset_dict['sec_end_offsets'])
     # print(len(preproc.data_dict['notes']['sec_start_note']))
     # print(preproc.data_dict['notes']['sec_end_note'])
 
-    for v in preproc.data_dict['harmonic_phrases'].values():
-        print(len(v))
+    # for v in preproc.data_dict['harmonic_phrases'].values():
+    #     print(len(v))
     # print(preproc.data_dict['sections'])
-    print(preproc.data_dict['harmonic_phrases'])
+    # print(preproc.data_dict['harmonic_phrases'])
