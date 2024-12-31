@@ -7,13 +7,17 @@ from const import SCOPE, BASIC_TABLES, NULLABLE_COLUMNS, DATA_DICT, DATA_TYPE_DI
 class PreprocessXML:
     """PreprocessXML converts a MusicXML file into a dictionary"""
 
-    def __init__(self, mxl_filepath: str, comprehensive=False):
+    def __init__(self):
+        pass
 
+
+    def load_data(self, mxl_filepath: str, comprehensive=False):
         # if comprehensive=False, returns basic tables. If True, returns additional tables as well
+        self.mxl_filepath = mxl_filepath
         self.comprehensive = comprehensive
 
         # get m21 part from mxl file
-        self.part, self.part_recurse = self.load_mxl_from_file(mxl_filepath)
+        self.part, self.part_recurse = self.load_mxl_from_file(self.mxl_filepath)
 
         # create instance variables
         self.artist = self.part.metadata.composer
@@ -216,7 +220,7 @@ class PreprocessXML:
         return None
 
 
-    def make_offset_dict(self, rehearsal_marks, spanners, expression_marks):
+    def make_offset_dict(self, rehearsal_marks, spanners, expression_marks) -> dict:
 
         offset_dict = {}
 
@@ -239,7 +243,7 @@ class PreprocessXML:
         return offset_dict
 
 
-    def get_track_offset(self, ele):
+    def get_track_offset(self, ele) -> float:
         return float(ele.activeSite.offset + ele.offset)
 
 
@@ -352,8 +356,8 @@ class PreprocessXML:
             self.first_measure_dict['time_sig'].ratioString if self.first_measure_dict['time_sig'] is not None else '-1'
         )
         mm = self.first_measure_dict['metronome_mark']
-        self.data_dict['tracks']['bpm'].append(mm.number if mm is not None else float(0))
-        self.data_dict['tracks']['bpm_ql'].append(mm.referent.quarterLength if mm is not None else float(0))
+        self.data_dict['tracks']['bpm'].append(mm.number if mm is not None else float("0.0"))
+        self.data_dict['tracks']['bpm_ql'].append(mm.referent.quarterLength if mm is not None else float("0.0"))
         self.data_dict['tracks']['track_total_dur'].append(self.track_dur)
 
         return None
@@ -809,7 +813,7 @@ class PreprocessXML:
             pass
 
 
-    def validate_input(self) -> None:
+    def validate_input(self) -> str:
         """
         checks the following:
             a) all lists in each dict are same length,
@@ -826,34 +830,57 @@ class PreprocessXML:
             col_types = {col_name: list(set((type(col) for col in column))) for col_name, column in self.data_dict[table].items()}
 
             # check each column is same length in each table
-            assert(len(set(col_lengths)) == 1), f"number of values is not the same for each column in {table}"
+            try:
+                assert(len(set(col_lengths)) == 1), f"number of values is not the same for each column in {table}"
+            except AssertionError as e:
+                return str(e)
 
             # check that tables are longer than 0
-            assert(col_lengths[0] > 0), f"table {table} has no values"
+            try:
+                assert(col_lengths[0] > 0), f"table {table} has no values"
+            except AssertionError as e:
+                return str(e)
 
             # check that columns are correct data type
             for col_name, col_type in col_types.items():
                 if len(col_type) == 1:
-                    assert(col_type[0] == self.data_type_dict[table][col_name]), f"'{col_name}' in table '{table}' is type {col_type[0]}, expected type {self.data_type_dict[table][col_name]}"
+                    try:
+                        assert(col_type[0] == self.data_type_dict[table][col_name]), f"'{col_name}' in table '{table}' is type {col_type[0]}, expected type {self.data_type_dict[table][col_name]}"
+                    except AssertionError as e:
+                        return str(e)
 
                 else:  # nullable columns
-                    assert(type(None) in col_type), f"Value Error: '{col_name}' in table '{table}' has multiple types: {[print(c_type) for c_type in col_type]}"
-                    assert((table, col_name) in self.nullable_columns), f"Value Error: '{col_name}' in table '{table}' has null values, but isn't in list of nullable columns"
-                    assert(set(col_type) == set((self.data_type_dict[table][col_name], type(None)))), f"Value Error: '{col_name}' in table '{table}' has data types {col_type}, expected {self.data_type_dict[table][col_name]}"
+                    try:
+                        assert(type(None) in col_type), f"Value Error: '{col_name}' in table '{table}' has multiple types: {[print(c_type) for c_type in col_type]}"
+                    except AssertionError as e:
+                        return str(e)
+
+                    try:
+                        assert((table, col_name) in self.nullable_columns), f"Value Error: '{col_name}' in table '{table}' has null values, but isn't in list of nullable columns"
+                    except AssertionError as e:
+                        return str(e)
+
+                    try:
+                        assert(set(col_type) == set((self.data_type_dict[table][col_name], type(None)))), f"Value Error: '{col_name}' in table '{table}' has data types {col_type}, expected {self.data_type_dict[table][col_name]}"
+                    except AssertionError as e:
+                        return str(e)
 
         print('all values validated!')
 
-        return None
+        return 'all values validated!'
 
 
 if __name__ == "__main__":
     import os
     from const import ROOT_DIR
 
-    xml_filepath = os.path.join(ROOT_DIR, "data", "pasta piece.mxl")
-    preproc = PreprocessXML(xml_filepath, comprehensive=False)
+    mxl_filepath = os.path.join(ROOT_DIR, "data", "pasta piece.mxl")
+    preproc = PreprocessXML()
+    preproc.load_data(mxl_filepath, comprehensive=True)
     preproc.input_all()
-    preproc.validate_input()
+    message = preproc.validate_input()
+    print("validation complete")
+    print(message)
     # print(preproc.offset_dict['sec_end_offsets'])
     # print(len(preproc.data_dict['notes']['sec_start_note']))
     # print(preproc.data_dict['notes']['sec_end_note'])

@@ -1,0 +1,4 @@
+fastapi==0.85.0
+uvicorn==0.18.3
+music21==8.1.0
+numpy==1.22.4
