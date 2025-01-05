@@ -368,7 +368,7 @@ class PreprocessXML:
                 note_dict['nct'].append(NCT)
 
                 pitches = [m21.pitch.Pitch(chord['root']).midi, m21.pitch.Pitch(ele.name).midi]
-                if pitches[0] > pitches[1]:
+                while pitches[0] > pitches[1]:
                     pitches[0] = pitches[0]-12
                 note_dict['from_root_name'].append(m21.chord.Chord(pitches).commonName)
                 note_dict['from_root_pc'].append(pitches[1] - pitches[0])
