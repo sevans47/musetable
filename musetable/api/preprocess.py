@@ -32,6 +32,7 @@ class PreprocessXML:
         self.spanners = [s for s in self.part.spanners]  # determines melodic phrases
         self.expression_marks = self.make_expression_marks_list(self.part_recurse)  # determines harmonic phrases
         self.offset_dict = self.make_offset_dict(self.rehearsal_marks, self.spanners, self.expression_marks)
+        self.make_sec_offset_to_sec_id_dict()  # add this to offset_dict
         self.data_dict = DATA_DICT
         self.data_type_dict = DATA_TYPE_DICT
         self.nullable_columns = NULLABLE_COLUMNS
@@ -242,6 +243,14 @@ class PreprocessXML:
         offset_dict['hp_durs'] = offset_dict['hp_end_offsets'] - offset_dict['hp_start_offsets']
 
         return offset_dict
+
+
+    def make_sec_offset_to_sec_id_dict(self) -> None:
+        section_ids = self.make_section_ids()
+        section_start_offsets = self.offset_dict["sec_start_offsets"]
+        sec_offset_to_sec_id = {sec_offset: sec_id for sec_offset, sec_id in zip(section_start_offsets, section_ids)}
+        self.offset_dict["sec_offset_to_sec_id"] = sec_offset_to_sec_id
+        return None
 
 
     def get_track_offset(self, ele) -> float:
@@ -504,10 +513,10 @@ class PreprocessXML:
 
         # check if new section or mp started during the previous element
         if len(self.data_dict['notes']['note_start_offset']) > 0:  # check we're not at the very first element of track
-            prev_note_start_offset = self.data_dict['notes']['note_start_offset'][-1]
-            prev_note_end_offset = self.data_dict['notes']['note_end_offset'][-1]
+            prev_ele_start_offset = self.data_dict['notes']['note_start_offset'][-1]
+            prev_ele_end_offset = self.data_dict['notes']['note_end_offset'][-1]
             next_sec_offset = start_offsets[current_index + 1] if current_index < len(start_offsets) - 2 else self.track_dur
-            if prev_note_start_offset < next_sec_offset and prev_note_end_offset > next_sec_offset:
+            if prev_ele_start_offset < next_sec_offset and prev_ele_end_offset > next_sec_offset:
                 return True
 
         return False
@@ -732,9 +741,17 @@ class PreprocessXML:
                 offsets=self.offset_dict['hp_start_offsets']
             )
 
+        # ensure correct section_id
+        ## if both a chord and note / rest have same offset as a section, recurse may start with chord,
+        ## assigning it the previous section_id.  This code prevents that
+        if track_offset in self.offset_dict["sec_start_offsets"]:
+            current_sec_id = self.offset_dict["sec_offset_to_sec_id"][track_offset]
+        else:
+            current_sec_id = self.id_dict['current_sec_id']
+
         # input data into chords dictionary
         self.data_dict['chords']['chord_id'].append(self.id_dict['current_chord_id'])
-        self.data_dict['chords']['sec_id'].append(self.id_dict['current_sec_id'])
+        self.data_dict['chords']['sec_id'].append(current_sec_id)
         self.data_dict['chords']['hp_id'].append(self.id_dict['current_hp_id'])
         self.data_dict['chords']['chord_name'].append(ele.figure)
         self.data_dict['chords']['chord_kind'].append(ele.chordKind)
