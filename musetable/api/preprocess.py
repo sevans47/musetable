@@ -1,5 +1,5 @@
 import music21 as m21
-from typing import Union, Mapping
+from typing import Union, Mapping, Sequence
 import numpy as np
 import pandas as pd
 
@@ -699,9 +699,21 @@ class PreprocessXML:
         prev_root_dist = np.abs([curr_root - prev_root, (curr_root - 12) - prev_root, curr_root - (prev_root-12)]).min()
         prev_bass_dist = np.abs([curr_bass - prev_bass, (curr_bass - 12) - prev_bass, curr_bass - (prev_bass-12)]).min()
 
-        # make it negative if current root / bass is lower than prev root / bass
-        prev_root_dist = -prev_root_dist if prev_root > curr_root else prev_root_dist
-        prev_bass_dist = -prev_bass_dist if prev_bass > curr_bass else prev_bass_dist
+        # determine which condition was used
+        prev_root_dist_cond = np.abs([curr_root - prev_root, (curr_root - 12) - prev_root, curr_root - (prev_root-12)]).argmin()
+        prev_bass_dist_cond = np.abs([curr_bass - prev_bass, (curr_bass - 12) - prev_bass, curr_bass - (prev_bass-12)]).argmin()
+
+        # for 1st condition - make it negative if current root / bass is lower than prev root / bass
+        if prev_root_dist_cond == 0:
+            prev_root_dist = -prev_root_dist if prev_root > curr_root else prev_root_dist
+        if prev_bass_dist_cond == 0:
+            prev_bass_dist = -prev_bass_dist if prev_bass > curr_bass else prev_bass_dist
+
+        # for 2nd and 3rd conditions - make it negative if current root / bass is higher than prev root / bass
+        if prev_root_dist_cond == 1 or prev_root_dist_cond == 2:
+            prev_root_dist = -prev_root_dist if curr_root > prev_root else prev_root_dist
+        if prev_bass_dist_cond == 1 or prev_bass_dist_cond == 2:
+            prev_bass_dist = -prev_bass_dist if curr_bass > prev_bass else prev_bass_dist
 
         return (int(prev_root_dist), int(prev_bass_dist))
 
@@ -999,16 +1011,18 @@ class PreprocessXML:
 
         n_highest_note = len(notes_only_df[notes_only_df["midi_num"]==highest_pitch.midi])
         dur_on_highest_note = notes_only_df[notes_only_df["midi_num"]==highest_pitch.midi]["duration"].sum()
+        dur_on_highest_note_pct = np.nan if notes_only_df["duration"].sum()==0 else dur_on_highest_note / notes_only_df["duration"].sum()
         self.data_dict[f"{mode}s_melody"][f"{field}_n_highest_note"].append(n_highest_note)
         self.data_dict[f"{mode}s_melody"][f"{field}_dur_on_highest_note"].append(dur_on_highest_note)
-        self.data_dict[f"{mode}s_melody"][f"{field}_dur_on_highest_note_pct"].append(dur_on_highest_note / notes_only_df["duration"].sum())
+        self.data_dict[f"{mode}s_melody"][f"{field}_dur_on_highest_note_pct"].append(dur_on_highest_note_pct)
         self.data_dict[f"{mode}s_melody"][f"{field}_n_notes_on_highest_note_pct"].append(n_highest_note / len(notes_only_df))
 
         n_lowest_note = len(notes_only_df[notes_only_df["midi_num"]==lowest_pitch.midi])
         dur_on_lowest_note = notes_only_df[notes_only_df["midi_num"]==lowest_pitch.midi]["duration"].sum()
+        dur_on_lowest_note_pct = np.nan if notes_only_df["duration"].sum()==0 else dur_on_lowest_note / notes_only_df["duration"].sum()
         self.data_dict[f"{mode}s_melody"][f"{field}_n_lowest_note"].append(n_lowest_note)
         self.data_dict[f"{mode}s_melody"][f"{field}_dur_on_lowest_note"].append(dur_on_lowest_note)
-        self.data_dict[f"{mode}s_melody"][f"{field}_dur_on_lowest_note_pct"].append(dur_on_lowest_note / notes_only_df["duration"].sum())
+        self.data_dict[f"{mode}s_melody"][f"{field}_dur_on_lowest_note_pct"].append(dur_on_lowest_note_pct)
         self.data_dict[f"{mode}s_melody"][f"{field}_n_notes_on_lowest_note_pct"].append(n_lowest_note / len(notes_only_df))
 
         # pitch
@@ -1035,10 +1049,11 @@ class PreprocessXML:
         # nct
         n_nct_notes = (notes_only_df["nct"]==1).sum()
         dur_nct_notes = notes_only_df[notes_only_df["nct"]==1]["duration"].sum()
+        dur_nct_notes_pct = np.nan if notes_only_df["duration"].sum()==0 else dur_nct_notes / notes_only_df["duration"].sum()
         self.data_dict[f"{mode}s_melody"][f"{field}_n_nct_notes"].append(n_nct_notes)
         self.data_dict[f"{mode}s_melody"][f"{field}_dur_nct_notes"].append(dur_nct_notes)
         self.data_dict[f"{mode}s_melody"][f"{field}_n_nct_notes_pct"].append(n_nct_notes / len(notes_only_df))
-        self.data_dict[f"{mode}s_melody"][f"{field}_dur_nct_notes_pct"].append(dur_nct_notes / notes_only_df["duration"].sum())
+        self.data_dict[f"{mode}s_melody"][f"{field}_dur_nct_notes_pct"].append(dur_nct_notes_pct)
 
         # movement
         up_cond = notes_only_df["prev_note_direction"]=="up"
@@ -1138,6 +1153,98 @@ class PreprocessXML:
         return None
 
 
+    def finish_comprehensive_section_input(
+        self,
+        track_dfs: Mapping[str, pd.DataFrame],
+        all_sections_dfs: Sequence[Mapping[str, pd.DataFrame]],
+    ) -> None:
+        "Add fields that require comparison between the different sections"
+
+        # identify chorus - first section named "chorus", or first section after intro
+        chorus_idxs = np.where(
+            (track_dfs["sections"]["sec_name"].str.lower().str.contains("chorus"))
+            & (~track_dfs["sections"]["sec_name"].str.lower().str.contains("pre|post"))
+        )[0]
+        if len(chorus_idxs) == 0:
+            chorus_idx = np.where(~track_dfs["sections"]["sec_name"].str.lower().str.contains("intro"))[0][0]
+        else:
+            chorus_idx = chorus_idxs[0]
+        chorus_id = track_dfs["sections"].loc[chorus_idx, "sec_id"]
+        chorus_dfs = all_sections_dfs[chorus_idx]
+        assert(chorus_dfs["sections"]["sec_id"].values[0] == chorus_id), "Chorus not identified, please investigate"
+
+        # get chorus variables
+        chorus_dur = self.data_dict["sections"]["sec_total_dur"][chorus_idx]
+        chorus_avg_mp_dur = self.data_dict["sections_form"]["sec_avg_mp_dur"][chorus_idx]
+        chorus_avg_hp_dur = self.data_dict["sections_form"]["sec_avg_hp_dur"][chorus_idx]
+        chorus_med_mp_dur = self.data_dict["sections_form"]["sec_med_mp_dur"][chorus_idx]
+        chorus_med_hp_dur = self.data_dict["sections_form"]["sec_med_hp_dur"][chorus_idx]
+        chorus_range_midi = self.data_dict["sections_melody"]["sec_range_midi"][chorus_idx]
+        chorus_highest_note = self.data_dict["sections_melody"]["sec_highest_note_midi"][chorus_idx]
+        chorus_lowest_note = self.data_dict["sections_melody"]["sec_lowest_note_midi"][chorus_idx]
+        widest_range = np.nanmax(self.data_dict["sections_melody"]["sec_range_midi"])
+        narrowest_range = np.nanmin(self.data_dict["sections_melody"]["sec_range_midi"])
+        chorus_first_chord_root = chorus_dfs["chords"]["chord_root_pc"].iloc[0]
+        chorus_first_chord_bass = chorus_dfs["chords"]["chord_bass_pc"].iloc[0]
+
+        last_note_offset = None
+
+        for sec_idx in range(len(self.data_dict["sections"]["sec_id"])):
+            sec_dfs = all_sections_dfs[sec_idx]
+
+            sec_dur = self.data_dict["sections"]["sec_total_dur"][sec_idx]
+            sec_avg_mp_dur = self.data_dict["sections_form"]["sec_avg_mp_dur"][sec_idx]
+            sec_avg_hp_dur = self.data_dict["sections_form"]["sec_avg_hp_dur"][sec_idx]
+            sec_med_mp_dur = self.data_dict["sections_form"]["sec_med_mp_dur"][sec_idx]
+            sec_med_hp_dur = self.data_dict["sections_form"]["sec_med_hp_dur"][sec_idx]
+            sec_range_midi = self.data_dict["sections_melody"]["sec_range_midi"][sec_idx]
+            sec_highest_note = self.data_dict["sections_melody"]["sec_highest_note_midi"][sec_idx]
+            sec_lowest_note = self.data_dict["sections_melody"]["sec_lowest_note_midi"][sec_idx]
+            sec_has_widest_range = sec_range_midi == widest_range
+            sec_has_narrowest_range = sec_range_midi == narrowest_range
+
+            self.data_dict["sections_form"]["sec_to_chorus_dur"].append(sec_dur / chorus_dur)
+            self.data_dict["sections_form"]["sec_to_chorus_avg_mp_dur"].append(sec_avg_mp_dur / chorus_avg_mp_dur)
+            self.data_dict["sections_form"]["sec_to_chorus_avg_hp_dur"].append(sec_avg_hp_dur / chorus_avg_hp_dur)
+            self.data_dict["sections_form"]["sec_to_chorus_med_mp_dur"].append(sec_med_mp_dur / chorus_med_mp_dur)
+            self.data_dict["sections_form"]["sec_to_chorus_med_hp_dur"].append(sec_med_hp_dur / chorus_med_hp_dur)
+            self.data_dict["sections_melody"]["sec_to_chorus_range_diff"].append(sec_range_midi - chorus_range_midi)
+            self.data_dict["sections_melody"]["sec_to_chorus_highest_note_dist"].append(sec_highest_note - chorus_highest_note)
+            self.data_dict["sections_melody"]["sec_to_chorus_lowest_note_dist"].append(sec_lowest_note - chorus_lowest_note)
+            self.data_dict["sections_melody"]["sec_has_track_widest_range"].append(sec_has_widest_range)
+            self.data_dict["sections_melody"]["sec_has_track_narrowest_range"].append(sec_has_narrowest_range)
+
+            sec_first_chord_root = sec_dfs["chords"]["chord_root_pc"].iloc[0]
+            sec_first_chord_bass = sec_dfs["chords"]["chord_bass_pc"].iloc[0]
+            sec_to_chorus_first_chord_root_dist, sec_to_chorus_first_chord_bass_dist = self.get_prev_chord_rb_dist(
+                sec_first_chord_root, sec_first_chord_bass, chorus_first_chord_root, chorus_first_chord_bass
+            )
+            self.data_dict["sections_harmony"]["sec_to_chorus_first_chord_root_dist"].append(sec_to_chorus_first_chord_root_dist)
+            self.data_dict["sections_harmony"]["sec_to_chorus_first_chord_bass_dist"].append(sec_to_chorus_first_chord_bass_dist)
+
+            notes_df = sec_dfs["notes"][sec_dfs["notes"]["note_name"] != "rest"]
+            no_notes = len(notes_df) == 0
+            if no_notes:  # section without notes
+                self.data_dict["sections_form"]["rest_dur_before_sec_first_note"].append(np.nan)
+                self.data_dict["sections_form"]["rest_dur_after_sec_last_note"].append(np.nan)
+            elif last_note_offset is None:  # first section with notes
+                first_note_start = notes_df["note_start_offset"].iloc[0]
+                last_note_end = notes_df["note_end_offset"].iloc[-1]
+                self.data_dict["sections_form"]["rest_dur_before_sec_first_note"].append(first_note_start)
+                last_note_offset = last_note_end
+            else:  # middle sections
+                first_note_start = notes_df["note_start_offset"].iloc[0]
+                rest_dur_before_sec = first_note_start - last_note_offset
+                self.data_dict["sections_form"]["rest_dur_after_sec_last_note"].append(rest_dur_before_sec)
+                self.data_dict["sections_form"]["rest_dur_before_sec_first_note"].append(rest_dur_before_sec)
+
+                last_note_end = notes_df["note_end_offset"].iloc[-1]
+                last_note_offset = last_note_end
+
+                if sec_idx == len(self.data_dict["sections"]["sec_id"]) - 1:  # last section with notes
+                    self.data_dict["sections_form"]["rest_dur_after_sec_last_note"].append(self.track_dur - last_note_end)
+
+
     # main function for inputing all data into data_dict
     def input_all(self):
 
@@ -1160,7 +1267,23 @@ class PreprocessXML:
 
         # create additional tables if 'comprehensive' arg is set to True when class is initialized
         if self.comprehensive:
-            pass
+
+            # prepare dataframes
+            track_dfs = {table: pd.DataFrame(self.data_dict[table]) for table in BASIC_TABLES}
+            all_sections = track_dfs["sections"]["sec_id"].values
+            all_sections_dfs = [
+                {table: df[df["sec_id"]==sec] for table, df in track_dfs.items() if table != "tracks"}
+                for sec in all_sections
+            ]
+
+            # input values into track metrics
+            self.comprehensive_track_section_input(track_dfs, "track")
+
+            # input values into section metrics
+            for section_dfs in all_sections_dfs:
+                self.comprehensive_track_section_input(section_dfs, "section")
+            self.finish_comprehensive_section_input(track_dfs, all_sections_dfs)
+
 
 
     def validate_input(self) -> str:

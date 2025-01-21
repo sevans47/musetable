@@ -177,8 +177,8 @@ DATA_DICT = {
         'sec_to_chorus_med_hp_dur': [],
         'sec_std_mp_dur': [],
         'sec_std_hp_dur': [],
-        'form_mps': [],
-        'form_mps_subphrases': [],
+        # 'form_mps': [],  # maybe implement later.  Levenshtein distance between subsequent mps to see if they're A, A', or B
+        # 'form_mps_subphrases': [],  # same as above, but within each mp.  Do it for various lengths, see which gives least variety
         'rest_dur_before_sec_first_note': [],
         'rest_dur_after_sec_last_note': [],
     },
