@@ -1245,6 +1245,206 @@ class PreprocessXML:
                     self.data_dict["sections_form"]["rest_dur_after_sec_last_note"].append(self.track_dur - last_note_end)
 
 
+    def prepare_all_mps_dfs(self, track_dfs: Mapping[str, pd.DataFrame]) -> Sequence[Mapping[str, pd.DataFrame]]:
+        all_mp_ids = track_dfs["melodic_phrases"]["mp_id"].values
+
+        # get melodic_phrases and notes dfs
+        all_mps_dfs = [
+            {
+                table: df[df["mp_id"]==mp_id] for table, df in track_dfs.items()
+                if table == "melodic_phrases" or table == "notes"
+            } for mp_id in all_mp_ids
+        ]
+
+        # get chords dfs
+        for mp_dfs in all_mps_dfs:
+            mp_start_offset = mp_dfs["melodic_phrases"]["mp_start_offset"].iloc[0]
+            mp_end_offset = mp_dfs["melodic_phrases"]["mp_end_offset"].iloc[0]
+            get_prev_chord = (track_dfs["chords"]["chord_start_offset"]==mp_start_offset).sum()==0
+
+            mp_chords_idx = track_dfs["chords"][
+                (track_dfs["chords"]["chord_start_offset"]>=mp_start_offset)
+                & (track_dfs["chords"]["chord_start_offset"]<=mp_end_offset)
+            ].index
+            min_idx = mp_chords_idx.min()
+
+            if get_prev_chord & min_idx > 0:
+                prev_idx = min_idx - 1
+                mp_chords_idx = [prev_idx] + list(mp_chords_idx)
+
+            mp_chords_df = track_dfs["chords"].loc[mp_chords_idx].copy()
+            mp_dfs["chords"] = mp_chords_df
+
+        return all_mps_dfs
+
+
+    def comprehensive_mp_input(self, mp_dfs: Mapping[str, pd.DataFrame]) -> None:
+        # prepare variables
+        mp_df = mp_dfs["melodic_phrases"].copy()
+        mp_notes_df = mp_dfs["notes"].copy()
+        notes_only_df = mp_notes_df[mp_notes_df["note_name"]!="rest"].copy()
+        chords_only_df = mp_dfs["chords"][mp_dfs["chords"]["chord_name"] != "N.C."].copy()
+        no_chords = len(chords_only_df)==0
+        sec_idx = np.where(np.array(self.data_dict["sections"]["sec_id"])==mp_df["sec_id"].iloc[0])[0][0]
+
+        # form
+        start_note_id, end_note_id = self.get_start_end_ids(notes_only_df, "note_start_offset", "note_id")
+        self.data_dict["melodic_phrases_details"]["mp_id"].append(mp_df["mp_id"].iloc[0])
+        self.data_dict["melodic_phrases_details"]["mp_start_note_id"].append(start_note_id)
+        self.data_dict["melodic_phrases_details"]["mp_end_note_id"].append(end_note_id)
+
+        total_dur = mp_notes_df["duration"].sum()
+        note_dur = notes_only_df["duration"].sum()
+        rest_dur = total_dur - note_dur
+        self.data_dict["melodic_phrases_details"]["mp_note_dur"].append(note_dur)
+        self.data_dict["melodic_phrases_details"]["mp_note_dur_pct"].append(note_dur / total_dur)
+        self.data_dict["melodic_phrases_details"]["mp_rest_dur"].append(rest_dur)
+        self.data_dict["melodic_phrases_details"]["mp_rest_dur_pct"].append(rest_dur / total_dur)
+
+        sec_start_offset = self.data_dict["sections"]["sec_start_offset"][sec_idx]
+        mp_start_offset = mp_df["mp_start_offset"].iloc[0]
+        self.data_dict["melodic_phrases_details"]["mp_start_section_offset"].append(mp_start_offset - sec_start_offset)
+
+        track_avg_mp_dur = self.data_dict["tracks_form"]["track_avg_mp_dur"][-1]
+        track_med_mp_dur = self.data_dict["tracks_form"]["track_med_mp_dur"][-1]
+        self.data_dict["melodic_phrases_details"]["mp_to_track_avg_mp_dur"].append(total_dur / track_avg_mp_dur)
+        self.data_dict["melodic_phrases_details"]["mp_to_track_med_mp_dur"].append(total_dur / track_med_mp_dur)
+
+        # range
+        lowest_pitch = m21.pitch.Pitch(midi=notes_only_df["midi_num"].min())
+        highest_pitch = m21.pitch.Pitch(midi=notes_only_df["midi_num"].max())
+        range_interval = m21.interval.Interval(lowest_pitch, highest_pitch)
+        self.data_dict["melodic_phrases_details"]["mp_n_notes"].append(len(notes_only_df))
+        self.data_dict["melodic_phrases_details"]["mp_range_interval"].append(range_interval.name)
+        self.data_dict["melodic_phrases_details"]["mp_range_midi"].append(range_interval.semitones)
+        self.data_dict["melodic_phrases_details"]["mp_highest_note_midi"].append(highest_pitch.midi)
+        self.data_dict["melodic_phrases_details"]["mp_lowest_note_midi"].append(lowest_pitch.midi)
+
+        track_highest_note = self.data_dict["tracks_melody"]["track_highest_note_midi"][-1]
+        track_lowest_note = self.data_dict["tracks_melody"]["track_lowest_note_midi"][-1]
+        self.data_dict["melodic_phrases_details"]["mp_has_track_highest_note"].append(highest_pitch.midi == track_highest_note)
+        self.data_dict["melodic_phrases_details"]["mp_has_track_lowest_note"].append(lowest_pitch.midi == track_lowest_note)
+
+        first_highest_note_offset = notes_only_df[notes_only_df["midi_num"]==highest_pitch.midi]["note_start_offset"].iloc[0] - mp_start_offset
+        first_lowest_note_offset = notes_only_df[notes_only_df["midi_num"]==lowest_pitch.midi]["note_start_offset"].iloc[0] - mp_start_offset
+        self.data_dict["melodic_phrases_details"]["pct_into_mp_first_highest_note"].append(first_highest_note_offset / total_dur)
+        self.data_dict["melodic_phrases_details"]["pct_into_mp_first_lowest_note"].append(first_lowest_note_offset / total_dur)
+
+        sec_highest_note = self.data_dict["sections_melody"]["sec_highest_note_midi"][sec_idx]
+        sec_lowest_note = self.data_dict["sections_melody"]["sec_lowest_note_midi"][sec_idx]
+        self.data_dict["melodic_phrases_details"]["has_sec_highest_note"].append(highest_pitch.midi == sec_highest_note)
+        self.data_dict["melodic_phrases_details"]["has_sec_lowest_note"].append(lowest_pitch.midi == sec_lowest_note)
+
+        n_highest_note = len(notes_only_df[notes_only_df["midi_num"]==highest_pitch.midi])
+        n_lowest_note = len(notes_only_df[notes_only_df["midi_num"]==lowest_pitch.midi])
+        dur_on_highest_note = notes_only_df[notes_only_df["midi_num"]==highest_pitch.midi]["duration"].sum()
+        dur_on_lowest_note = notes_only_df[notes_only_df["midi_num"]==lowest_pitch.midi]["duration"].sum()
+        self.data_dict["melodic_phrases_details"]["mp_n_highest_note"].append(n_highest_note)
+        self.data_dict["melodic_phrases_details"]["mp_dur_on_highest_note"].append(dur_on_highest_note)
+        self.data_dict["melodic_phrases_details"]["mp_n_notes_on_highest_note_pct"].append(n_highest_note / len(notes_only_df))
+        self.data_dict["melodic_phrases_details"]["mp_dur_on_highest_note_pct"].append(dur_on_highest_note / note_dur)
+        self.data_dict["melodic_phrases_details"]["mp_n_lowest_note"].append(n_lowest_note)
+        self.data_dict["melodic_phrases_details"]["mp_dur_on_lowest_note"].append(dur_on_lowest_note)
+        self.data_dict["melodic_phrases_details"]["mp_n_notes_on_lowest_note_pct"].append(n_lowest_note / len(notes_only_df))
+        self.data_dict["melodic_phrases_details"]["mp_dur_on_lowest_note_pct"].append(dur_on_lowest_note / note_dur)
+
+        # pitch
+        most_common_pitch_list = notes_only_df["midi_num"].mode().values.tolist()
+        self.data_dict["melodic_phrases_details"]["mp_avg_pitch"].append(notes_only_df["midi_num"].mean().round(0).astype(int))
+        self.data_dict["melodic_phrases_details"]["mp_most_common_pitch"] \
+            .append(", ".join([str(pitch) for pitch in most_common_pitch_list]))
+        self.data_dict[f"melodic_phrases_details"]["mp_most_common_pitch_pct"] \
+            .append(len(notes_only_df[notes_only_df["midi_num"].isin(most_common_pitch_list)]) / len(notes_only_df))
+
+        # duration
+        mp_longest_note = notes_only_df["duration"].max()
+        sec_longest_note = self.data_dict["sections_melody"]["sec_longest_note_dur"][sec_idx]
+        track_longest_note = self.data_dict["tracks_melody"]["track_longest_note_dur"][-1]
+        most_common_note_dur_list = notes_only_df["duration"].mode().values.tolist()
+        second_most_common_note_dur_list = self.get_second_most_common_dur(notes_only_df, most_common_note_dur_list)
+        self.data_dict["melodic_phrases_details"]["mp_longest_note_dur"].append(mp_longest_note)
+        self.data_dict["melodic_phrases_details"]["has_track_longest_note"].append(mp_longest_note==track_longest_note)
+        self.data_dict["melodic_phrases_details"]["has_sec_longest_note"].append(mp_longest_note==sec_longest_note)
+        self.data_dict["melodic_phrases_details"]["mp_most_common_note_dur"] \
+            .append(", ".join([str(dur) for dur in most_common_note_dur_list]))
+        self.data_dict["melodic_phrases_details"]["mp_most_common_note_dur_pct"] \
+            .append(len(notes_only_df[notes_only_df["duration"].isin(most_common_note_dur_list)]) / len(notes_only_df))
+        self.data_dict["melodic_phrases_details"]["mp_second_most_common_note_dur"] \
+            .append(", ".join([str(dur) for dur in second_most_common_note_dur_list]))
+        self.data_dict["melodic_phrases_details"]["mp_second_most_common_note_dur_pct"] \
+            .append(len(notes_only_df[notes_only_df["duration"].isin(second_most_common_note_dur_list)]) / len(notes_only_df))
+
+        # nct
+        n_nct_notes = (notes_only_df["nct"]==1).sum()
+        dur_nct_notes = notes_only_df[notes_only_df["nct"]==1]["duration"].sum()
+        dur_nct_notes_pct = np.nan if notes_only_df["duration"].sum()==0 else dur_nct_notes / notes_only_df["duration"].sum()
+        self.data_dict["melodic_phrases_details"]["mp_n_nct_notes"].append(n_nct_notes)
+        self.data_dict["melodic_phrases_details"]["mp_dur_nct_notes"].append(dur_nct_notes)
+        self.data_dict["melodic_phrases_details"]["mp_n_nct_notes_pct"].append(n_nct_notes / len(notes_only_df))
+        self.data_dict["melodic_phrases_details"]["mp_dur_nct_notes_pct"].append(dur_nct_notes_pct)
+
+        # movement
+        up_cond = notes_only_df["prev_note_direction"]=="up"
+        down_cond = notes_only_df["prev_note_direction"]=="down"
+        same_cond = notes_only_df["prev_note_direction"]=="same"
+        step_cond = notes_only_df["prev_note_distance_type"]=="step"
+        skip_cond = notes_only_df["prev_note_distance_type"]=="skip"
+        leap_cond = notes_only_df["prev_note_distance_type"]=="leap"
+
+        self.data_dict["melodic_phrases_details"]["mp_up_pct"].append(sum(up_cond) / len(notes_only_df))
+        self.data_dict["melodic_phrases_details"]["mp_down_pct"].append(sum(down_cond) / len(notes_only_df))
+        self.data_dict["melodic_phrases_details"]["mp_same_pct"].append(sum(same_cond) / len(notes_only_df))
+        self.data_dict["melodic_phrases_details"]["mp_up_step_pct"].append(sum(up_cond & step_cond) / len(notes_only_df))
+        self.data_dict["melodic_phrases_details"]["mp_up_skip_pct"].append(sum(up_cond & skip_cond) / len(notes_only_df))
+        self.data_dict["melodic_phrases_details"]["mp_up_leap_pct"].append(sum(up_cond & leap_cond) / len(notes_only_df))
+        self.data_dict["melodic_phrases_details"]["mp_down_step_pct"].append(sum(down_cond & step_cond) / len(notes_only_df))
+        self.data_dict["melodic_phrases_details"]["mp_down_skip_pct"].append(sum(down_cond & skip_cond) / len(notes_only_df))
+        self.data_dict["melodic_phrases_details"]["mp_down_leap_pct"].append(sum(down_cond & leap_cond) / len(notes_only_df))
+
+        # harmony
+        if no_chords:
+            self.data_dict["melodic_phrases_details"]["mp_n_chords"].append(np.nan)
+            self.data_dict["melodic_phrases_details"]["mp_avg_chord_dur"].append(np.nan)
+            self.data_dict["melodic_phrases_details"]["mp_avg_chord_center_dur"].append(np.nan)
+        else:
+            chord_center_cols = ["prev_chord_rb_same_qual_diff", "prev_chord_root_same_bass_diff", "prev_chord_bass_same_root_diff"]
+            chords_only_df["new_chord_center"] = (chords_only_df[chord_center_cols].sum(axis=1)==0).cumsum()
+            self.data_dict["melodic_phrases_details"]["mp_n_chords"].append(len(chords_only_df))
+            self.data_dict["melodic_phrases_details"]["mp_avg_chord_dur"].append(chords_only_df["chord_dur"].mean())
+            self.data_dict["melodic_phrases_details"]["mp_avg_chord_center_dur"] \
+                    .append(chords_only_df[["new_chord_center", "chord_dur"]].groupby("new_chord_center")["chord_dur"].sum().mean())
+
+        return None
+
+
+    def finish_comprehensive_mp_input(self, mp_df: pd.DataFrame) -> None:
+        # rest durations between mps
+        rest_dur_before_mp_list = (mp_df["mp_start_offset"] - mp_df["mp_end_offset"].shift(1)).fillna(mp_df["mp_start_offset"].iloc[0]).tolist()
+        rest_dur_after_mp_list = (mp_df["mp_start_offset"].shift(-1, fill_value=self.track_dur) - mp_df["mp_end_offset"]).tolist()
+        self.data_dict["melodic_phrases_details"]["rest_dur_before_mp"] = rest_dur_before_mp_list
+        self.data_dict["melodic_phrases_details"]["rest_dur_after_mp"] = rest_dur_after_mp_list
+
+        # ranges by section
+        mp_range_df = pd.DataFrame(
+            {
+                "mp_id": self.data_dict["melodic_phrases_details"]["mp_id"],
+                "sec_id": self.data_dict["melodic_phrases"]["sec_id"],
+                "mp_range_midi": self.data_dict["melodic_phrases_details"]["mp_range_midi"]
+            }
+        )
+        mp_range_dict = mp_range_df.groupby("sec_id")["mp_range_midi"].agg(["min", "max"]).to_dict()
+
+        for mp_id in mp_range_df["mp_id"].values:
+            mp_range = mp_range_df[mp_range_df["mp_id"]==mp_id]["mp_range_midi"].iloc[0]
+            mp_sec = mp_range_df[mp_range_df["mp_id"]==mp_id]["sec_id"].iloc[0]
+            has_sec_widest_range = mp_range == mp_range_dict["max"][mp_sec]
+            has_sec_narrowest_range = mp_range == mp_range_dict["min"][mp_sec]
+            self.data_dict["melodic_phrases_details"]["has_sec_widest_range"].append(has_sec_widest_range)
+            self.data_dict["melodic_phrases_details"]["has_sec_narrowest_range"].append(has_sec_narrowest_range)
+
+        return None
+
+
     # main function for inputing all data into data_dict
     def input_all(self):
 
@@ -1283,6 +1483,12 @@ class PreprocessXML:
             for section_dfs in all_sections_dfs:
                 self.comprehensive_track_section_input(section_dfs, "section")
             self.finish_comprehensive_section_input(track_dfs, all_sections_dfs)
+
+            # input values into melodic phrases metrics
+            all_mps_dfs = self.prepare_all_mps_dfs(track_dfs)
+            for mp_dfs in all_mps_dfs:
+                self.comprehensive_mp_input(mp_dfs)
+            self.finish_comprehensive_mp_input(track_dfs["melodic_phrases"])
 
 
 
