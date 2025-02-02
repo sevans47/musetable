@@ -344,7 +344,7 @@ DATA_DICT = {
         'hp_start_chord_id': [],
         'hp_end_chord_id': [],
         'hp_start_section_offset': [],
-        'hp_start_section_m1b1_offset': [],
+        # 'hp_start_section_m1b1_offset': [],  # can't do this yet, because I'm not dealing with time signature changes
         'hp_to_track_avg_hp_dur': [],
         'hp_to_track_med_hp_dur': [],
         'hp_avg_chord_dur': [],
@@ -362,7 +362,7 @@ DATA_DICT = {
         'hp_pct_other_quality': [],
         'hp_to_chorus_first_chord_root_dist': [],
         'hp_to_chorus_first_chord_bass_dist': [],
-        'pct_non_unique_chords': [],
+        'pct_repeated_chords': [],
         'pct_chord_center_elongation': [],
         'chord_names': [],
         'chord_durs': [],

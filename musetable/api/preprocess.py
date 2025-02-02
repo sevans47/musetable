@@ -841,6 +841,24 @@ class PreprocessXML:
         return second_most_common_dur
 
 
+    def find_chorus(self, track_dfs: Mapping[str, pd.DataFrame]) -> tuple:
+        """
+        Get section id for chorus and index for chorus's data in data_dict
+        Chorus is the first section named "chorus", or first section after intro
+        """
+        chorus_idxs = np.where(
+            (track_dfs["sections"]["sec_name"].str.lower().str.contains("chorus"))
+            & (~track_dfs["sections"]["sec_name"].str.lower().str.contains("pre|post"))
+        )[0]
+        if len(chorus_idxs) == 0:
+            chorus_idx = np.where(~track_dfs["sections"]["sec_name"].str.lower().str.contains("intro"))[0][0]
+        else:
+            chorus_idx = chorus_idxs[0]
+        chorus_id = track_dfs["sections"].loc[chorus_idx, "sec_id"]
+
+        return (chorus_id, chorus_idx)
+
+
     def comprehensive_track_section_input(self, df_dict: Mapping[str, pd.DataFrame], mode: str) -> None:
         if mode == "track":
             current_id = df_dict["tracks"]["track_id"].iloc[0]
@@ -850,8 +868,6 @@ class PreprocessXML:
             field = "sec"
         else:
             raise ValueError("Invalid mode.  Please use either 'track' or 'section'")
-
-        print(f"inputing values for {current_id}...")
 
         ### form table
         self.data_dict[f"{mode}s_form"][f"{field}_id"].append(current_id)
@@ -1148,8 +1164,6 @@ class PreprocessXML:
         self.data_dict[f"{mode}s_harmony"][f"{field}_pct_other_quality"] \
             .append(chords_only_df["chord_kind"].isin(chord_kind_dict["other"]).sum() / len(chords_only_df))
 
-        print(f"finished")
-
         return None
 
 
@@ -1161,15 +1175,7 @@ class PreprocessXML:
         "Add fields that require comparison between the different sections"
 
         # identify chorus - first section named "chorus", or first section after intro
-        chorus_idxs = np.where(
-            (track_dfs["sections"]["sec_name"].str.lower().str.contains("chorus"))
-            & (~track_dfs["sections"]["sec_name"].str.lower().str.contains("pre|post"))
-        )[0]
-        if len(chorus_idxs) == 0:
-            chorus_idx = np.where(~track_dfs["sections"]["sec_name"].str.lower().str.contains("intro"))[0][0]
-        else:
-            chorus_idx = chorus_idxs[0]
-        chorus_id = track_dfs["sections"].loc[chorus_idx, "sec_id"]
+        chorus_id, chorus_idx = self.find_chorus(track_dfs)
         chorus_dfs = all_sections_dfs[chorus_idx]
         assert(chorus_dfs["sections"]["sec_id"].values[0] == chorus_id), "Chorus not identified, please investigate"
 
@@ -1445,6 +1451,134 @@ class PreprocessXML:
         return None
 
 
+    def prepare_all_hps_dfs(self, track_dfs: Mapping[str, pd.DataFrame]) -> Sequence[Mapping[str, pd.DataFrame]]:
+        all_hp_ids = track_dfs["harmonic_phrases"]["hp_id"].values
+
+        # get harmonic_phrases and chords dfs
+        all_hps_dfs = [
+            {
+                table: df[df["hp_id"]==hp_id] for table, df in track_dfs.items()
+                if table == "harmonic_phrases" or table == "chords"
+            } for hp_id in all_hp_ids
+        ]
+
+        return all_hps_dfs
+
+
+    def comprehensive_hp_input(self, hp_dfs: Mapping[str, pd.DataFrame]) -> None:
+
+        hp_df = hp_dfs["harmonic_phrases"].copy()
+        hp_chords_df = hp_dfs["chords"].copy()
+        chords_only_df = hp_chords_df[hp_chords_df["chord_name"] != "N.C."]
+        assert(len(chords_only_df)>0), "harmonic phrase has no chords - this case hasn't been implemented yet"
+        sec_idx = np.where(np.array(self.data_dict["sections"]["sec_id"])==hp_df["sec_id"].iloc[0])[0][0]
+
+        start_chord_id, end_chord_id = self.get_start_end_ids(chords_only_df, "chord_start_offset", "chord_id")
+        self.data_dict["harmonic_phrases_details"]["hp_id"].append(hp_df["hp_id"].iloc[0])
+        self.data_dict["harmonic_phrases_details"]["hp_start_chord_id"].append(start_chord_id)
+        self.data_dict["harmonic_phrases_details"]["hp_end_chord_id"].append(end_chord_id)
+        sec_start_offset = self.data_dict["sections"]["sec_start_offset"][sec_idx]
+        hp_start_offset = hp_df["hp_start_offset"].iloc[0]
+        self.data_dict["harmonic_phrases_details"]["hp_start_section_offset"].append(hp_start_offset - sec_start_offset)
+
+        hp_dur = hp_df["hp_total_dur"].iloc[0]
+        track_avg_hp_dur = self.data_dict["tracks_form"]["track_avg_hp_dur"][0]
+        track_med_hp_dur = self.data_dict["tracks_form"]["track_med_hp_dur"][0]
+        self.data_dict["harmonic_phrases_details"]["hp_to_track_avg_hp_dur"].append(hp_dur / track_avg_hp_dur)
+        self.data_dict["harmonic_phrases_details"]["hp_to_track_med_hp_dur"].append(hp_dur / track_med_hp_dur)
+
+        chord_center_cols = ["prev_chord_rb_same_qual_diff", "prev_chord_root_same_bass_diff", "prev_chord_bass_same_root_diff"]
+        chords_only_df["new_chord_center"] = (chords_only_df[chord_center_cols].sum(axis=1)==0).cumsum()
+        chord_center_durs = chords_only_df.groupby(["new_chord_center"])["chord_dur"].sum()
+        self.data_dict["harmonic_phrases_details"]["hp_avg_chord_dur"].append(chords_only_df["chord_dur"].mean())
+        self.data_dict["harmonic_phrases_details"]["hp_avg_chord_center_dur"].append(chord_center_durs.mean())
+        self.data_dict["harmonic_phrases_details"]["hp_med_chord_dur"].append(chords_only_df["chord_dur"].median())
+        self.data_dict["harmonic_phrases_details"]["hp_med_chord_center_dur"].append(chord_center_durs.median())
+        self.data_dict["harmonic_phrases_details"]["hp_n_chords"].append(len(chords_only_df))
+        self.data_dict["harmonic_phrases_details"]["hp_n_unique_chords"].append(chords_only_df["chord_name"].nunique())
+        self.data_dict["harmonic_phrases_details"]["hp_n_chord_centers"].append(len(chord_center_durs))
+
+        self.data_dict["harmonic_phrases_details"]["hp_pct_maj_3_no_7"] \
+            .append(chords_only_df["chord_kind"].isin(chord_kind_dict["maj_3_no_7"]).sum() / len(chords_only_df))
+        self.data_dict["harmonic_phrases_details"]["hp_pct_min_3_no_7"] \
+            .append(chords_only_df["chord_kind"].isin(chord_kind_dict["min_3_no_7"]).sum() / len(chords_only_df))
+        self.data_dict["harmonic_phrases_details"]["hp_pct_maj_3_maj_7"] \
+            .append(chords_only_df["chord_kind"].isin(chord_kind_dict["maj_3_maj_7"]).sum() / len(chords_only_df))
+        self.data_dict["harmonic_phrases_details"]["hp_pct_min_3_min_7"] \
+            .append(chords_only_df["chord_kind"].isin(chord_kind_dict["min_3_min_7"]).sum() / len(chords_only_df))
+        self.data_dict["harmonic_phrases_details"]["hp_pct_maj_3_min_7"] \
+            .append(chords_only_df["chord_kind"].isin(chord_kind_dict["maj_3_min_7"]).sum() / len(chords_only_df))
+        self.data_dict["harmonic_phrases_details"]["hp_pct_other_quality"] \
+            .append(chords_only_df["chord_kind"].isin(chord_kind_dict["other"]).sum() / len(chords_only_df))
+
+        self.data_dict["harmonic_phrases_details"]["pct_repeated_chords"] \
+            .append(chords_only_df["chord_name"].duplicated(keep=False).sum() / len(chords_only_df))
+        self.data_dict["harmonic_phrases_details"]["pct_chord_center_elongation"] \
+            .append((chords_only_df["prev_chord_elongation"]==1).sum() / len(chords_only_df))
+        self.data_dict["harmonic_phrases_details"]["chord_names"].append(", ".join(chords_only_df["chord_name"].values))
+        self.data_dict["harmonic_phrases_details"]["chord_durs"].append(", ".join(chords_only_df["chord_dur"].astype(str).values))
+        self.data_dict["harmonic_phrases_details"]["chord_center_durs"].append(", ".join(chord_center_durs.astype(str).values))
+        self.data_dict["harmonic_phrases_details"]["chord_change_beats"].append(", ".join(chords_only_df["beat"].astype(str).values))
+        self.data_dict["harmonic_phrases_details"]["chord_center_change_beats"] \
+            .append(", ".join(chords_only_df[chords_only_df["prev_chord_elongation"]==0]["beat"].astype(str).values))
+        self.data_dict["harmonic_phrases_details"]["root_motion"].append(", ".join(chords_only_df["prev_chord_root_dist"].astype(str).values))
+        self.data_dict["harmonic_phrases_details"]["bass_motion"].append(", ".join(chords_only_df["prev_chord_bass_dist"].astype(str).values))
+        self.data_dict["harmonic_phrases_details"]["n_chord_qualities"].append(chords_only_df["chord_kind"].nunique())
+
+        two_note_cond = chords_only_df["n_pitches"]==2
+        three_note_cond = chords_only_df["n_pitches"]==3
+        four_note_cond = chords_only_df["n_pitches"]==4
+        five_plus_note_cond = chords_only_df["n_pitches"]>4
+        self.data_dict["harmonic_phrases_details"]["n_2_note_chords"].append(two_note_cond.sum())
+        self.data_dict["harmonic_phrases_details"]["n_3_note_chords"].append(three_note_cond.sum())
+        self.data_dict["harmonic_phrases_details"]["n_4_note_chords"].append(four_note_cond.sum())
+        self.data_dict["harmonic_phrases_details"]["n_5plus_note_chords"].append(five_plus_note_cond.sum())
+        self.data_dict["harmonic_phrases_details"]["dur_2_note_chords"].append(chords_only_df[two_note_cond]["chord_dur"].sum())
+        self.data_dict["harmonic_phrases_details"]["dur_3_note_chords"].append(chords_only_df[three_note_cond]["chord_dur"].sum())
+        self.data_dict["harmonic_phrases_details"]["dur_4_note_chords"].append(chords_only_df[four_note_cond]["chord_dur"].sum())
+        self.data_dict["harmonic_phrases_details"]["dur_5plus_note_chords"].append(chords_only_df[five_plus_note_cond]["chord_dur"].sum())
+
+        hp_end_offset = hp_df["hp_end_offset"].iloc[0]
+        final_sec = sec_idx == len(self.data_dict["sections"]["sec_id"]) - 1
+        next_sec_start_offset = self.track_dur if final_sec else self.data_dict["sections"]["sec_start_offset"][sec_idx + 1]
+        self.data_dict["harmonic_phrases_details"]["hp_overlaps_next_section"].append(hp_end_offset > next_sec_start_offset)
+
+        self.data_dict["harmonic_phrases_details"]["all_chord_dur_are_same"].append(chords_only_df["chord_dur"].nunique()==1)
+
+        track_avg_chord_dur = self.data_dict["tracks_harmony"]["track_avg_chord_dur"][-1]
+        track_med_chord_dur = self.data_dict["tracks_harmony"]["track_med_chord_dur"][-1]
+        self.data_dict["harmonic_phrases_details"]["hp_to_track_avg_chord_dur"] \
+            .append(chords_only_df["chord_dur"].mean() / track_avg_chord_dur)
+        self.data_dict["harmonic_phrases_details"]["hp_to_track_med_chord_dur"] \
+            .append(chords_only_df["chord_dur"].median() / track_med_chord_dur)
+
+        return None
+
+
+    def finish_comprehensive_hp_input(self, track_dfs: Mapping[str, pd.DataFrame]) -> None:
+        chorus_id, _ = self.find_chorus(track_dfs)
+        chorus_chord_root, chorus_chord_bass = track_dfs["chords"][
+            (track_dfs["chords"]["sec_id"]==chorus_id)
+            & (track_dfs["chords"]["chord_name"]!="N.C.")] \
+        [["chord_root_pc", "chord_bass_pc"]].iloc[0, :].values
+
+        for hp_id in track_dfs["harmonic_phrases"]["hp_id"].values:
+
+            hp_chord_root, hp_chord_bass = track_dfs["chords"][
+                (track_dfs["chords"]["hp_id"]==hp_id)
+                & (track_dfs["chords"]["chord_name"]!="N.C.")] \
+            [["chord_root_pc", "chord_bass_pc"]].iloc[0, :].values
+
+            root_dist, bass_dist = self.get_prev_chord_rb_dist(
+                hp_chord_root, hp_chord_bass, chorus_chord_root, chorus_chord_bass
+            )
+
+            self.data_dict["harmonic_phrases_details"]["hp_to_chorus_first_chord_root_dist"].append(root_dist)
+            self.data_dict["harmonic_phrases_details"]["hp_to_chorus_first_chord_bass_dist"].append(bass_dist)
+
+        return None
+
+
     # main function for inputing all data into data_dict
     def input_all(self):
 
@@ -1489,6 +1623,12 @@ class PreprocessXML:
             for mp_dfs in all_mps_dfs:
                 self.comprehensive_mp_input(mp_dfs)
             self.finish_comprehensive_mp_input(track_dfs["melodic_phrases"])
+
+            # input values into harmonic phrases metrics
+            all_hps_dfs = self.prepare_all_hps_dfs(track_dfs)
+            for hp_dfs in all_hps_dfs:
+                self.comprehensive_hp_input(hp_dfs)
+            self.finish_comprehensive_hp_input(track_dfs)
 
 
 
