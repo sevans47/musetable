@@ -1579,6 +1579,83 @@ class PreprocessXML:
         return None
 
 
+    def comprehensive_note_input(self, track_dfs: Mapping[str, pd.DataFrame]) -> None:
+        for note_id in self.data_dict["notes"]["note_id"]:
+            self.data_dict["notes_details"]["note_id"].append(note_id)
+
+            note_df = track_dfs["notes"][track_dfs["notes"]["note_id"]==note_id]
+            sec_idx = np.where(np.array(self.data_dict["sections"]["sec_id"])==note_df["sec_id"].iloc[0])[0][0]
+            mp_idx = np.where(np.array(self.data_dict["melodic_phrases"]["mp_id"])==note_df["mp_id"].iloc[0])[0]
+            mp_idx = mp_idx[0] if len(mp_idx) > 0 else None
+
+            sec_start_offset = self.data_dict["sections"]["sec_start_offset"][sec_idx]
+            mp_start_offset = None if mp_idx is None else self.data_dict["melodic_phrases"]["mp_start_offset"][mp_idx]
+            note_start_offset = note_df["note_start_offset"].iloc[0]
+            note_start_mp_offset = None if mp_idx is None else note_start_offset - mp_start_offset
+            self.data_dict["notes_details"]["note_start_section_offset"].append(note_start_offset - sec_start_offset)
+            self.data_dict["notes_details"]["note_start_mp_offset"].append(note_start_mp_offset)
+
+            note_end_offset = note_df["note_end_offset"].iloc[0]
+            chord_starts = self.data_dict["chords"]["chord_start_offset"]
+            chord_ends = self.data_dict["chords"]["chord_end_offset"]
+            for chord_start, chord_end in zip(chord_starts, chord_ends):
+                note_starts_in_chord = note_start_offset >= chord_start and note_start_offset < chord_end
+                note_ends_in_chord = note_end_offset > chord_start and note_end_offset <= chord_end
+                if not note_starts_in_chord and not note_ends_in_chord:
+                    continue
+                if note_starts_in_chord and note_ends_in_chord:
+                    spans_multi_chords = False
+                else:
+                    spans_multi_chords = True
+
+            self.data_dict["notes_details"]["spans_multi_chords"].append(spans_multi_chords)
+
+            track_highest_note = self.data_dict["tracks_melody"]["track_highest_note_midi"][-1]
+            track_lowest_note = self.data_dict["tracks_melody"]["track_lowest_note_midi"][-1]
+            track_longest_note = self.data_dict["tracks_melody"]["track_longest_note_dur"][-1]
+            sec_highest_note = self.data_dict["sections_melody"]["sec_highest_note_midi"][sec_idx]
+            sec_lowest_note = self.data_dict["sections_melody"]["sec_lowest_note_midi"][sec_idx]
+            sec_longest_note = self.data_dict["sections_melody"]["sec_longest_note_dur"][sec_idx]
+            mp_longest_note = None if mp_idx is None else self.data_dict["melodic_phrases_details"]["mp_longest_note_dur"][mp_idx]
+
+            is_rest = note_df["note_name"].iloc[0] == "rest"
+            note_pitch = note_df["midi_num"].iloc[0]
+            note_dur = note_df["duration"].iloc[0]
+            is_track_highest_note = False if is_rest else note_pitch == track_highest_note
+            is_track_lowest_note = False if is_rest else note_pitch == track_lowest_note
+            is_track_longest_note = False if is_rest else note_dur == track_longest_note
+            is_sec_highest_note = False if is_rest else note_pitch == sec_highest_note
+            is_sec_lowest_note = False if is_rest else note_pitch == sec_lowest_note
+            is_sec_longest_note = False if is_rest else note_dur == sec_longest_note
+            mp_longest_note = False if mp_longest_note is None or is_rest else note_dur == mp_longest_note
+
+            self.data_dict["notes_details"]["is_track_highest_note"].append(is_track_highest_note)
+            self.data_dict["notes_details"]["is_track_lowest_note"].append(is_track_lowest_note)
+            self.data_dict["notes_details"]["is_track_longest_note"].append(is_track_longest_note)
+            self.data_dict["notes_details"]["is_sec_highest_note"].append(is_sec_highest_note)
+            self.data_dict["notes_details"]["is_sec_lowest_note"].append(is_sec_lowest_note)
+            self.data_dict["notes_details"]["is_sec_longest_note"].append(is_sec_longest_note)
+            self.data_dict["notes_details"]["is_phrase_longest_note"].append(mp_longest_note)
+
+            note_direction = note_df["prev_note_direction"].iloc[0]
+            note_distance_type = note_df["prev_note_distance_type"].iloc[0]
+            up_cond = note_direction == "up"
+            down_cond = note_direction == "down"
+            step_cond = note_distance_type == "step"
+            skip_cond = note_distance_type == "skip"
+            leap_cond = note_distance_type == "leap"
+
+            self.data_dict["notes_details"]["up"].append(up_cond)
+            self.data_dict["notes_details"]["down"].append(down_cond)
+            self.data_dict["notes_details"]["same"].append(note_direction == "same")
+            self.data_dict["notes_details"]["up_step"].append(up_cond and step_cond)
+            self.data_dict["notes_details"]["up_skip"].append(up_cond and skip_cond)
+            self.data_dict["notes_details"]["up_leap"].append(up_cond and leap_cond)
+            self.data_dict["notes_details"]["down_step"].append(down_cond and step_cond)
+            self.data_dict["notes_details"]["down_skip"].append(down_cond and skip_cond)
+            self.data_dict["notes_details"]["down_leap"].append(down_cond and leap_cond)
+
+
     # main function for inputing all data into data_dict
     def input_all(self):
 
@@ -1630,6 +1707,8 @@ class PreprocessXML:
                 self.comprehensive_hp_input(hp_dfs)
             self.finish_comprehensive_hp_input(track_dfs)
 
+            # input values into note metrics
+            self.comprehensive_note_input(track_dfs)
 
 
     def validate_input(self) -> str:

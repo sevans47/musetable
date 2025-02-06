@@ -416,7 +416,7 @@ DATA_DICT = {
     'notes_details': {
         'note_id': [],
         'note_start_section_offset': [],
-        'note_start_section_m1b1_offset': [],
+        # 'note_start_section_m1b1_offset': [],
         'note_start_mp_offset': [],
         'spans_multi_chords': [],
         'is_sec_highest_note': [],
@@ -424,7 +424,7 @@ DATA_DICT = {
         'is_track_highest_note': [],
         'is_track_lowest_note': [],
         'is_track_longest_note': [],
-        'is_section_longest_note': [],
+        'is_sec_longest_note': [],
         'is_phrase_longest_note': [],
         'up': [],
         'down': [],
