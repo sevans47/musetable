@@ -466,7 +466,7 @@ DATA_DICT = {
     'chords_details': {
         'chord_id': [],
         'chord_start_section_offset': [],
-        'chord_start_section_m1b1_offset': [],
+        # 'chord_start_section_m1b1_offset': [],
         'third_interval': [],
         'fifth_interval': [],
         'seventh_interval': [],
@@ -483,7 +483,7 @@ DATA_DICT = {
         'chord_root_unique_to_sec': [],
         'chord_bass_unique_to_sec': [],
         'n_sec_with_same_chord': [],
-        'n_unique_secs_with_same_chord': [],
+        # 'n_unique_secs_with_same_chord': [],  # maybe do this later
         'chord_unique_to_hp': [],
         'chord_quality_unique_to_hp': [],
         'chord_root_unique_to_hp': [],

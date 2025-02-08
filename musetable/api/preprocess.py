@@ -1656,6 +1656,92 @@ class PreprocessXML:
             self.data_dict["notes_details"]["down_leap"].append(down_cond and leap_cond)
 
 
+    def comprehensive_chord_input(self, track_dfs: Mapping[str, pd.DataFrame]) -> None:
+        chords_df = track_dfs["chords"].copy()
+
+        chord_vcs = chords_df["chord_name"].value_counts()
+        chord_qualitiy_vcs = chords_df["chord_kind"].value_counts()
+        chord_root_vcs = chords_df["chord_root_pc"].value_counts()
+        chord_bass_vcs = chords_df["chord_bass_pc"].value_counts()
+        chord_vcs_by_sec = chords_df.groupby("chord_name")["sec_id"].nunique()
+        chord_qualitiy_vcs_by_sec = chords_df.groupby("chord_kind")["sec_id"].nunique()
+        chord_root_vcs_by_sec = chords_df.groupby("chord_root_pc")["sec_id"].nunique()
+        chord_bass_vcs_by_sec = chords_df.groupby("chord_bass_pc")["sec_id"].nunique()
+        chord_vcs_by_hp = chords_df.groupby("chord_name")["hp_id"].nunique()
+        chord_qualitiy_vcs_by_hp = chords_df.groupby("chord_kind")["hp_id"].nunique()
+        chord_root_vcs_by_hp = chords_df.groupby("chord_root_pc")["hp_id"].nunique()
+        chord_bass_vcs_by_hp = chords_df.groupby("chord_bass_pc")["hp_id"].nunique()
+
+        chorus_id, _ = self.find_chorus(track_dfs)
+        chorus_fist_chord = chords_df[chords_df["sec_id"]==chorus_id].iloc[[0]]
+        chorus_root, chorus_bass = chorus_fist_chord[["chord_root_pc", "chord_bass_pc"]].iloc[0]
+
+        for chord_id in self.data_dict["chords"]["chord_id"]:
+
+            self.data_dict["chords_details"]["chord_id"].append(chord_id)
+
+            chord_df = chords_df[chords_df["chord_id"]==chord_id]
+            sec_id = chord_df["sec_id"].iloc[0]
+            sec_idx = np.where(np.array(self.data_dict["sections"]["sec_id"])==sec_id)[0][0]
+
+            sec_start_offset = self.data_dict["sections"]["sec_start_offset"][sec_idx]
+            chord_start_offset = chord_df["chord_start_offset"].iloc[0]
+            self.data_dict["chords_details"]["chord_start_section_offset"].append(chord_start_offset - sec_start_offset)
+
+            # chord degrees
+            chord_degrees = chord_df["degrees"].iloc[0].split(",")
+            third = [d for d in chord_degrees if "3" in d and "1" not in d]
+            third = third[0] if len(third)==1 else None
+            fifth = [d for d in chord_degrees if "5" in d and "1" not in d]
+            fifth = fifth[0] if len(fifth)==1 else None
+            seventh = [d for d in chord_degrees if "7" in d and "1" not in d]
+            seventh = seventh[0] if len(seventh)==1 else None
+            has_extensions = False if len([d for d in chord_degrees if int(d.strip("-")) > 7])==0 else True
+            has_added_notes = False if len([d for d in chord_degrees if d.strip("-") in ["2", "4", "6"]])==0 else True
+            self.data_dict["chords_details"]["third_interval"].append(third)
+            self.data_dict["chords_details"]["fifth_interval"].append(fifth)
+            self.data_dict["chords_details"]["seventh_interval"].append(seventh)
+            self.data_dict["chords_details"]["has_extension"].append(has_extensions)
+            self.data_dict["chords_details"]["has_added_notes"].append(has_added_notes)
+
+            # chord kind
+            chord_kind = chord_df["chord_kind"].iloc[0]
+            self.data_dict["chords_details"]["has_maj_3_no_7"].append(chord_kind in chord_kind_dict["maj_3_no_7"])
+            self.data_dict["chords_details"]["has_min_3_no_7"].append(chord_kind in chord_kind_dict["min_3_no_7"])
+            self.data_dict["chords_details"]["has_maj_3_maj_7"].append(chord_kind in chord_kind_dict["maj_3_maj_7"])
+            self.data_dict["chords_details"]["has_min_3_min_7"].append(chord_kind in chord_kind_dict["min_3_min_7"])
+            self.data_dict["chords_details"]["has_maj_3_min_7"].append(chord_kind in chord_kind_dict["maj_3_min_7"])
+            self.data_dict["chords_details"]["has_other_quality"].append(chord_kind in chord_kind_dict["other"])
+
+            # uniqueness - would be more interesting if, in addition to sec_id, I have sec_type that I group by
+            # # e.g. see if this chord is unique to the Verse, not just Verse 1
+            chord_name = chord_df["chord_name"].iloc[0]
+            chord_root = chord_df["chord_root_pc"].iloc[0]
+            chord_bass = chord_df["chord_bass_pc"].iloc[0]
+            hp_id = chord_df["hp_id"].iloc[0]
+            self.data_dict["chords_details"]["chord_unique_to_sec"].append(chord_vcs_by_sec[chord_name] == 1)
+            self.data_dict["chords_details"]["chord_quality_unique_to_sec"].append(chord_qualitiy_vcs_by_sec[chord_kind] == 1)
+            self.data_dict["chords_details"]["chord_root_unique_to_sec"].append(chord_root_vcs_by_sec[chord_root] == 1)
+            self.data_dict["chords_details"]["chord_bass_unique_to_sec"].append(chord_bass_vcs_by_sec[chord_bass] == 1)
+            self.data_dict["chords_details"]["n_sec_with_same_chord"].append(chord_vcs_by_sec[chord_name])
+            self.data_dict["chords_details"]["chord_unique_to_hp"].append(chord_vcs_by_hp[chord_name] == 1)
+            self.data_dict["chords_details"]["chord_quality_unique_to_hp"].append(chord_qualitiy_vcs_by_hp[chord_kind] == 1)
+            self.data_dict["chords_details"]["chord_root_unique_to_hp"].append(chord_root_vcs_by_hp[chord_root] == 1)
+            self.data_dict["chords_details"]["chord_bass_unique_to_hp"].append(chord_bass_vcs_by_hp[chord_bass] == 1)
+            self.data_dict["chords_details"]["n_hp_with_same_chord"].append(chord_vcs_by_hp[chord_name])
+            self.data_dict["chords_details"]["chord_unique_in_track"].append(chord_vcs[chord_name] == 1)
+            self.data_dict["chords_details"]["chord_quality_unique_in_track"].append(chord_qualitiy_vcs[chord_kind] == 1)
+            self.data_dict["chords_details"]["chord_root_unique_in_track"].append(chord_root_vcs[chord_root] == 1)
+            self.data_dict["chords_details"]["chord_bass_unique_in_track"].append(chord_bass_vcs[chord_bass] == 1)
+
+            # chorus comparison
+            root_distance, bass_distance = self.get_prev_chord_rb_dist(chord_root, chord_bass, chorus_root, chorus_bass)
+            self.data_dict["chords_details"]["chord_to_chorus_first_chord_root_dist"].append(root_distance)
+            self.data_dict["chords_details"]["chord_to_chorus_first_chord_bass_dist"].append(bass_distance)
+
+            return None
+
+
     # main function for inputing all data into data_dict
     def input_all(self):
 
@@ -1707,8 +1793,11 @@ class PreprocessXML:
                 self.comprehensive_hp_input(hp_dfs)
             self.finish_comprehensive_hp_input(track_dfs)
 
-            # input values into note metrics
+            # input values into notes metrics
             self.comprehensive_note_input(track_dfs)
+
+            # input values into chords metrics
+            self.comprehensive_chord_input(track_dfs)
 
 
     def validate_input(self) -> str:
