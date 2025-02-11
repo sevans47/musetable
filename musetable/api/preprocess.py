@@ -916,8 +916,8 @@ class PreprocessXML:
         self.data_dict[f"{mode}s_form"][f"{field}_end_chord_id"].append(end_chord_id)
 
         # durations
-        total_dur = df_dict["notes"]["duration"].sum()
-        note_dur = notes_only_df["duration"].sum()
+        total_dur = float(df_dict["notes"]["duration"].sum())
+        note_dur = float(notes_only_df["duration"].sum())
         rest_dur = total_dur - note_dur
         self.data_dict[f"{mode}s_form"][f"{field}_note_dur"].append(note_dur)
         self.data_dict[f"{mode}s_form"][f"{field}_note_dur_pct"].append(note_dur / total_dur)
@@ -927,7 +927,7 @@ class PreprocessXML:
         # mp rest durations
         notes_in_mp_df = df_dict["notes"][df_dict["notes"]["mp_id"].notna()]
         notes_between_mp_df = df_dict["notes"][df_dict["notes"]["mp_id"].isna()]
-        rest_dur_in_mps = notes_in_mp_df[notes_in_mp_df["note_name"]=="rest"]["duration"].sum()
+        rest_dur_in_mps = float(notes_in_mp_df[notes_in_mp_df["note_name"]=="rest"]["duration"].sum())
         rest_dur_between_mps = rest_dur - rest_dur_in_mps
         self.data_dict[f"{mode}s_form"][f"{field}_rest_dur_in_mps"].append(rest_dur_in_mps)
         self.data_dict[f"{mode}s_form"][f"{field}_rest_dur_in_mps_pct"].append(rest_dur_in_mps / rest_dur)
@@ -936,21 +936,21 @@ class PreprocessXML:
 
         rest_dur_in_mps_series = notes_in_mp_df[notes_in_mp_df["note_name"]=="rest"][["mp_id", "duration"]] \
             .groupby("mp_id")["duration"].sum()
-        self.data_dict[f"{mode}s_form"][f"{field}_avg_rest_dur_in_mps"].append(rest_dur_in_mps_series.mean())
-        self.data_dict[f"{mode}s_form"][f"{field}_med_rest_dur_in_mps"].append(rest_dur_in_mps_series.median())
+        self.data_dict[f"{mode}s_form"][f"{field}_avg_rest_dur_in_mps"].append(float(rest_dur_in_mps_series.mean()))
+        self.data_dict[f"{mode}s_form"][f"{field}_med_rest_dur_in_mps"].append(float(rest_dur_in_mps_series.median()))
 
         note_mp_df = df_dict["notes"][["mp_id", "note_name", "duration"]].copy()
         note_mp_df["mp_id"] = note_mp_df["mp_id"].fillna("none")  # 'adjacent' counts sequential NA's as different
         note_mp_df["adjacent"] = (note_mp_df["mp_id"] != note_mp_df["mp_id"].shift(1)).cumsum()
         rest_dur_between_mps_series = note_mp_df[(note_mp_df["mp_id"]=="none") & (note_mp_df["note_name"]=="rest")][["adjacent", "duration"]] \
             .groupby("adjacent")["duration"].sum()
-        self.data_dict[f"{mode}s_form"][f"{field}_avg_rest_dur_between_mps"].append(rest_dur_between_mps_series.mean())
-        self.data_dict[f"{mode}s_form"][f"{field}_med_rest_dur_between_mps"].append(rest_dur_between_mps_series.median())
+        self.data_dict[f"{mode}s_form"][f"{field}_avg_rest_dur_between_mps"].append(float(rest_dur_between_mps_series.mean()))
+        self.data_dict[f"{mode}s_form"][f"{field}_med_rest_dur_between_mps"].append(float(rest_dur_between_mps_series.median()))
 
         # phrases
         self.data_dict[f"{mode}s_form"][f"{field}_n_mps"] \
-            .append(df_dict["melodic_phrases"][df_dict["melodic_phrases"]["mp_id"]!="-1"]["mp_id"].count())
-        self.data_dict[f"{mode}s_form"][f"{field}_n_hps"].append(df_dict["harmonic_phrases"]["hp_id"].count())
+            .append(int(df_dict["melodic_phrases"][df_dict["melodic_phrases"]["mp_id"]!="-1"]["mp_id"].count()))
+        self.data_dict[f"{mode}s_form"][f"{field}_n_hps"].append(int(df_dict["harmonic_phrases"]["hp_id"].count()))
 
         unique_mp_df = df_dict["notes"][["mp_id", "midi_num", "duration"]] \
             .groupby("mp_id")[["midi_num", "duration"]].agg(list)
@@ -961,12 +961,12 @@ class PreprocessXML:
         self.data_dict[f"{mode}s_form"][f"{field}_n_unique_mps"].append(n_unique_mps)
         self.data_dict[f"{mode}s_form"][f"{field}_n_unique_hps"].append(n_unique_hps)
 
-        self.data_dict[f"{mode}s_form"][f"{field}_avg_mp_dur"].append(df_dict["melodic_phrases"]["mp_total_dur"].mean())
-        self.data_dict[f"{mode}s_form"][f"{field}_avg_hp_dur"].append(df_dict["harmonic_phrases"]["hp_total_dur"].mean())
-        self.data_dict[f"{mode}s_form"][f"{field}_med_mp_dur"].append(df_dict["melodic_phrases"]["mp_total_dur"].median())
-        self.data_dict[f"{mode}s_form"][f"{field}_med_hp_dur"].append(df_dict["harmonic_phrases"]["hp_total_dur"].median())
-        self.data_dict[f"{mode}s_form"][f"{field}_std_mp_dur"].append(df_dict["melodic_phrases"]["mp_total_dur"].std())
-        self.data_dict[f"{mode}s_form"][f"{field}_std_hp_dur"].append(df_dict["harmonic_phrases"]["hp_total_dur"].std())
+        self.data_dict[f"{mode}s_form"][f"{field}_avg_mp_dur"].append(float(df_dict["melodic_phrases"]["mp_total_dur"].mean()))
+        self.data_dict[f"{mode}s_form"][f"{field}_avg_hp_dur"].append(float(df_dict["harmonic_phrases"]["hp_total_dur"].mean()))
+        self.data_dict[f"{mode}s_form"][f"{field}_med_mp_dur"].append(float(df_dict["melodic_phrases"]["mp_total_dur"].median()))
+        self.data_dict[f"{mode}s_form"][f"{field}_med_hp_dur"].append(float(df_dict["harmonic_phrases"]["hp_total_dur"].median()))
+        self.data_dict[f"{mode}s_form"][f"{field}_std_mp_dur"].append(float(df_dict["melodic_phrases"]["mp_total_dur"].std()))
+        self.data_dict[f"{mode}s_form"][f"{field}_std_hp_dur"].append(float(df_dict["harmonic_phrases"]["hp_total_dur"].std()))
 
         # n notes and rests
         self.data_dict[f"{mode}s_form"][f"{field}_n_notes"].append(len(notes_only_df[notes_only_df["note_id"]!="-1"]))
@@ -1015,27 +1015,27 @@ class PreprocessXML:
         self.data_dict[f"{mode}s_melody"][f"{field}_first_lowest_note_id"].append(first_lowest_note_id)
 
         first_highest_note_offset = notes_only_df[notes_only_df["midi_num"]==highest_pitch.midi]["note_start_offset"]
-        first_highest_note_offset = -100 if len(first_highest_note_offset)==0 else first_highest_note_offset.iloc[0]
+        first_highest_note_offset = None if len(first_highest_note_offset)==0 else float(first_highest_note_offset.iloc[0] / self.track_dur)
         first_lowest_note_offset = notes_only_df[notes_only_df["midi_num"]==lowest_pitch.midi]["note_start_offset"]
-        first_lowest_note_offset = -100 if len(first_lowest_note_offset)==0 else first_lowest_note_offset.iloc[0]
-        self.data_dict[f"{mode}s_melody"][f"pct_into_{field}_first_highest_note"].append(first_highest_note_offset / self.track_dur)
-        self.data_dict[f"{mode}s_melody"][f"pct_into_{field}_first_lowest_note"].append(first_lowest_note_offset / self.track_dur)
+        first_lowest_note_offset = None if len(first_lowest_note_offset)==0 else float(first_lowest_note_offset.iloc[0] / self.track_dur)
+        self.data_dict[f"{mode}s_melody"][f"pct_into_{field}_first_highest_note"].append(first_highest_note_offset)
+        self.data_dict[f"{mode}s_melody"][f"pct_into_{field}_first_lowest_note"].append(first_lowest_note_offset)
         self.data_dict[f"{mode}s_melody"][f"{field}_med_mp_highest_note"] \
-            .append(notes_only_df[["mp_id", "midi_num"]].groupby("mp_id")["midi_num"].max().median())
+            .append(float(notes_only_df[["mp_id", "midi_num"]].groupby("mp_id")["midi_num"].max().median()))
         self.data_dict[f"{mode}s_melody"][f"{field}_med_mp_lowest_note"] \
-            .append(notes_only_df[["mp_id", "midi_num"]].groupby("mp_id")["midi_num"].min().median())
+            .append(float(notes_only_df[["mp_id", "midi_num"]].groupby("mp_id")["midi_num"].min().median()))
 
         n_highest_note = len(notes_only_df[notes_only_df["midi_num"]==highest_pitch.midi])
-        dur_on_highest_note = notes_only_df[notes_only_df["midi_num"]==highest_pitch.midi]["duration"].sum()
-        dur_on_highest_note_pct = np.nan if notes_only_df["duration"].sum()==0 else dur_on_highest_note / notes_only_df["duration"].sum()
+        dur_on_highest_note = float(notes_only_df[notes_only_df["midi_num"]==highest_pitch.midi]["duration"].sum())
+        dur_on_highest_note_pct = None if notes_only_df["duration"].sum()==0 else float(dur_on_highest_note / notes_only_df["duration"].sum())
         self.data_dict[f"{mode}s_melody"][f"{field}_n_highest_note"].append(n_highest_note)
         self.data_dict[f"{mode}s_melody"][f"{field}_dur_on_highest_note"].append(dur_on_highest_note)
         self.data_dict[f"{mode}s_melody"][f"{field}_dur_on_highest_note_pct"].append(dur_on_highest_note_pct)
         self.data_dict[f"{mode}s_melody"][f"{field}_n_notes_on_highest_note_pct"].append(n_highest_note / len(notes_only_df))
 
         n_lowest_note = len(notes_only_df[notes_only_df["midi_num"]==lowest_pitch.midi])
-        dur_on_lowest_note = notes_only_df[notes_only_df["midi_num"]==lowest_pitch.midi]["duration"].sum()
-        dur_on_lowest_note_pct = np.nan if notes_only_df["duration"].sum()==0 else dur_on_lowest_note / notes_only_df["duration"].sum()
+        dur_on_lowest_note = float(notes_only_df[notes_only_df["midi_num"]==lowest_pitch.midi]["duration"].sum())
+        dur_on_lowest_note_pct = None if notes_only_df["duration"].sum()==0 else float(dur_on_lowest_note / notes_only_df["duration"].sum())
         self.data_dict[f"{mode}s_melody"][f"{field}_n_lowest_note"].append(n_lowest_note)
         self.data_dict[f"{mode}s_melody"][f"{field}_dur_on_lowest_note"].append(dur_on_lowest_note)
         self.data_dict[f"{mode}s_melody"][f"{field}_dur_on_lowest_note_pct"].append(dur_on_lowest_note_pct)
@@ -1043,7 +1043,7 @@ class PreprocessXML:
 
         # pitch
         most_common_pitch_list = notes_only_df["midi_num"].mode().values.tolist()
-        self.data_dict[f"{mode}s_melody"][f"{field}_avg_pitch"].append(notes_only_df["midi_num"].mean().round(0).astype(int))
+        self.data_dict[f"{mode}s_melody"][f"{field}_avg_pitch"].append(int(notes_only_df["midi_num"].mean().round(0)))
         self.data_dict[f"{mode}s_melody"][f"{field}_most_common_pitch"] \
             .append(", ".join([str(pitch) for pitch in most_common_pitch_list]))
         self.data_dict[f"{mode}s_melody"][f"{field}_most_common_pitch_pct"] \
@@ -1052,7 +1052,7 @@ class PreprocessXML:
         # duration
         most_common_note_dur_list = notes_only_df["duration"].mode().values.tolist()
         second_most_common_note_dur_list = self.get_second_most_common_dur(notes_only_df, most_common_note_dur_list)
-        self.data_dict[f"{mode}s_melody"][f"{field}_longest_note_dur"].append(notes_only_df["duration"].max())
+        self.data_dict[f"{mode}s_melody"][f"{field}_longest_note_dur"].append(float(notes_only_df["duration"].max()))
         self.data_dict[f"{mode}s_melody"][f"{field}_most_common_note_dur"] \
             .append(", ".join([str(dur) for dur in most_common_note_dur_list]))
         self.data_dict[f"{mode}s_melody"][f"{field}_most_common_note_dur_pct"] \
@@ -1063,9 +1063,9 @@ class PreprocessXML:
             .append(len(notes_only_df[notes_only_df["duration"].isin(second_most_common_note_dur_list)]) / len(notes_only_df))
 
         # nct
-        n_nct_notes = (notes_only_df["nct"]==1).sum()
-        dur_nct_notes = notes_only_df[notes_only_df["nct"]==1]["duration"].sum()
-        dur_nct_notes_pct = np.nan if notes_only_df["duration"].sum()==0 else dur_nct_notes / notes_only_df["duration"].sum()
+        n_nct_notes = int((notes_only_df["nct"]==1).sum())
+        dur_nct_notes = float(notes_only_df[notes_only_df["nct"]==1]["duration"].sum())
+        dur_nct_notes_pct = None if notes_only_df["duration"].sum()==0 else float(dur_nct_notes / notes_only_df["duration"].sum())
         self.data_dict[f"{mode}s_melody"][f"{field}_n_nct_notes"].append(n_nct_notes)
         self.data_dict[f"{mode}s_melody"][f"{field}_dur_nct_notes"].append(dur_nct_notes)
         self.data_dict[f"{mode}s_melody"][f"{field}_n_nct_notes_pct"].append(n_nct_notes / len(notes_only_df))
@@ -1094,37 +1094,37 @@ class PreprocessXML:
             track_lowest_note = self.data_dict["tracks_melody"]["track_lowest_note_midi"][-1]
             track_longest_note = self.data_dict["tracks_melody"]["track_longest_note_dur"][-1]
 
-            self.data_dict[f"{mode}s_melody"][f"{field}_has_track_highest_note"].append(notes_only_df["midi_num"].max() == track_highest_note)
-            self.data_dict[f"{mode}s_melody"][f"{field}_has_track_lowest_note"].append(notes_only_df["midi_num"].min() == track_lowest_note)
-            self.data_dict[f"{mode}s_melody"][f"{field}_has_track_longest_note"].append(notes_only_df["duration"].max() == track_longest_note)
+            self.data_dict[f"{mode}s_melody"][f"{field}_has_track_highest_note"].append(bool(notes_only_df["midi_num"].max() == track_highest_note))
+            self.data_dict[f"{mode}s_melody"][f"{field}_has_track_lowest_note"].append(bool(notes_only_df["midi_num"].min() == track_lowest_note))
+            self.data_dict[f"{mode}s_melody"][f"{field}_has_track_longest_note"].append(bool(notes_only_df["duration"].max() == track_longest_note))
 
         no_notes = len(notes_only_df[notes_only_df["note_id"]!="-1"]) == 0
         if no_notes:
-            self.data_dict[f"{mode}s_melody"][f"{field}_range_interval"][-1] = np.nan
-            self.data_dict[f"{mode}s_melody"][f"{field}_range_midi"][-1] = np.nan
-            self.data_dict[f"{mode}s_melody"][f"{field}_highest_note_midi"][-1] = np.nan
-            self.data_dict[f"{mode}s_melody"][f"{field}_lowest_note_midi"][-1] = np.nan
-            self.data_dict[f"{mode}s_melody"][f"pct_into_{field}_first_highest_note"][-1] = np.nan
-            self.data_dict[f"{mode}s_melody"][f"pct_into_{field}_first_lowest_note"][-1] = np.nan
-            self.data_dict[f"{mode}s_melody"][f"{field}_med_mp_highest_note"][-1] = np.nan
-            self.data_dict[f"{mode}s_melody"][f"{field}_med_mp_lowest_note"][-1] = np.nan
-            self.data_dict[f"{mode}s_melody"][f"{field}_avg_pitch"][-1] = np.nan
-            self.data_dict[f"{mode}s_melody"][f"{field}_most_common_pitch"][-1] = np.nan
-            self.data_dict[f"{mode}s_melody"][f"{field}_most_common_pitch_pct"][-1] = np.nan
-            self.data_dict[f"{mode}s_melody"][f"{field}_second_most_common_note_dur"][-1] = np.nan
-            self.data_dict[f"{mode}s_melody"][f"{field}_second_most_common_note_dur_pct"][-1] = np.nan
-            self.data_dict[f"{mode}s_melody"][f"{field}_n_nct_notes"][-1] = np.nan
-            self.data_dict[f"{mode}s_melody"][f"{field}_dur_nct_notes"][-1] = np.nan
-            self.data_dict[f"{mode}s_melody"][f"{field}_n_nct_notes_pct"][-1] = np.nan
-            self.data_dict[f"{mode}s_melody"][f"{field}_up_pct"][-1] = np.nan
-            self.data_dict[f"{mode}s_melody"][f"{field}_down_pct"][-1] = np.nan
-            self.data_dict[f"{mode}s_melody"][f"{field}_same_pct"][-1] = np.nan
-            self.data_dict[f"{mode}s_melody"][f"{field}_up_step_pct"][-1] = np.nan
-            self.data_dict[f"{mode}s_melody"][f"{field}_up_skip_pct"][-1] = np.nan
-            self.data_dict[f"{mode}s_melody"][f"{field}_up_leap_pct"][-1] = np.nan
-            self.data_dict[f"{mode}s_melody"][f"{field}_down_step_pct"][-1] = np.nan
-            self.data_dict[f"{mode}s_melody"][f"{field}_down_skip_pct"][-1] = np.nan
-            self.data_dict[f"{mode}s_melody"][f"{field}_down_leap_pct"][-1] = np.nan
+            self.data_dict[f"{mode}s_melody"][f"{field}_range_interval"][-1] = None
+            self.data_dict[f"{mode}s_melody"][f"{field}_range_midi"][-1] = None
+            self.data_dict[f"{mode}s_melody"][f"{field}_highest_note_midi"][-1] = None
+            self.data_dict[f"{mode}s_melody"][f"{field}_lowest_note_midi"][-1] = None
+            self.data_dict[f"{mode}s_melody"][f"pct_into_{field}_first_highest_note"][-1] = None
+            self.data_dict[f"{mode}s_melody"][f"pct_into_{field}_first_lowest_note"][-1] = None
+            self.data_dict[f"{mode}s_melody"][f"{field}_med_mp_highest_note"][-1] = None
+            self.data_dict[f"{mode}s_melody"][f"{field}_med_mp_lowest_note"][-1] = None
+            self.data_dict[f"{mode}s_melody"][f"{field}_avg_pitch"][-1] = None
+            self.data_dict[f"{mode}s_melody"][f"{field}_most_common_pitch"][-1] = None
+            self.data_dict[f"{mode}s_melody"][f"{field}_most_common_pitch_pct"][-1] = None
+            self.data_dict[f"{mode}s_melody"][f"{field}_second_most_common_note_dur"][-1] = None
+            self.data_dict[f"{mode}s_melody"][f"{field}_second_most_common_note_dur_pct"][-1] = None
+            self.data_dict[f"{mode}s_melody"][f"{field}_n_nct_notes"][-1] = None
+            self.data_dict[f"{mode}s_melody"][f"{field}_dur_nct_notes"][-1] = None
+            self.data_dict[f"{mode}s_melody"][f"{field}_n_nct_notes_pct"][-1] = None
+            self.data_dict[f"{mode}s_melody"][f"{field}_up_pct"][-1] = None
+            self.data_dict[f"{mode}s_melody"][f"{field}_down_pct"][-1] = None
+            self.data_dict[f"{mode}s_melody"][f"{field}_same_pct"][-1] = None
+            self.data_dict[f"{mode}s_melody"][f"{field}_up_step_pct"][-1] = None
+            self.data_dict[f"{mode}s_melody"][f"{field}_up_skip_pct"][-1] = None
+            self.data_dict[f"{mode}s_melody"][f"{field}_up_leap_pct"][-1] = None
+            self.data_dict[f"{mode}s_melody"][f"{field}_down_step_pct"][-1] = None
+            self.data_dict[f"{mode}s_melody"][f"{field}_down_skip_pct"][-1] = None
+            self.data_dict[f"{mode}s_melody"][f"{field}_down_leap_pct"][-1] = None
 
         ### harmony table
         self.data_dict[f"{mode}s_harmony"][f"{field}_id"].append(current_id)
@@ -1132,14 +1132,14 @@ class PreprocessXML:
         chords_only_df["new_chord_center"] = (chords_only_df[chord_center_cols].sum(axis=1)==0).cumsum()
 
         # durations
-        self.data_dict[f"{mode}s_harmony"][f"{field}_avg_chord_dur"].append(chords_only_df["chord_dur"].mean())
+        self.data_dict[f"{mode}s_harmony"][f"{field}_avg_chord_dur"].append(float(chords_only_df["chord_dur"].mean()))
         self.data_dict[f"{mode}s_harmony"][f"{field}_avg_chord_center_dur"] \
-            .append(chords_only_df[["new_chord_center", "chord_dur"]].groupby("new_chord_center")["chord_dur"].sum().mean())
-        self.data_dict[f"{mode}s_harmony"][f"{field}_avg_hp_dur"].append(df_dict["harmonic_phrases"]["hp_total_dur"].mean())
-        self.data_dict[f"{mode}s_harmony"][f"{field}_med_chord_dur"].append(chords_only_df["chord_dur"].median())
+            .append(float(chords_only_df[["new_chord_center", "chord_dur"]].groupby("new_chord_center")["chord_dur"].sum().mean()))
+        self.data_dict[f"{mode}s_harmony"][f"{field}_avg_hp_dur"].append(float(df_dict["harmonic_phrases"]["hp_total_dur"].mean()))
+        self.data_dict[f"{mode}s_harmony"][f"{field}_med_chord_dur"].append(float(chords_only_df["chord_dur"].median()))
         self.data_dict[f"{mode}s_harmony"][f"{field}_med_chord_center_dur"] \
-            .append(chords_only_df[["new_chord_center", "chord_dur"]].groupby("new_chord_center")["chord_dur"].sum().median())
-        self.data_dict[f"{mode}s_harmony"][f"{field}_med_hp_dur"].append(df_dict["harmonic_phrases"]["hp_total_dur"].median())
+            .append(float(chords_only_df[["new_chord_center", "chord_dur"]].groupby("new_chord_center")["chord_dur"].sum().median()))
+        self.data_dict[f"{mode}s_harmony"][f"{field}_med_hp_dur"].append(float(df_dict["harmonic_phrases"]["hp_total_dur"].median()))
 
         # counts
         self.data_dict[f"{mode}s_harmony"][f"{field}_n_chords"].append(len(chords_only_df))
@@ -1152,17 +1152,17 @@ class PreprocessXML:
         self.data_dict[f"{mode}s_harmony"][f"{field}_pct_4_note_chords_or_more"] \
             .append(len(chords_only_df[chords_only_df["n_pitches"]>3]) / len(chords_only_df))
         self.data_dict[f"{mode}s_harmony"][f"{field}_pct_maj_3_no_7"] \
-            .append(chords_only_df["chord_kind"].isin(chord_kind_dict["maj_3_no_7"]).sum() / len(chords_only_df))
+            .append(float(chords_only_df["chord_kind"].isin(chord_kind_dict["maj_3_no_7"]).sum() / len(chords_only_df)))
         self.data_dict[f"{mode}s_harmony"][f"{field}_pct_min_3_no_7"] \
-            .append(chords_only_df["chord_kind"].isin(chord_kind_dict["min_3_no_7"]).sum() / len(chords_only_df))
+            .append(float(chords_only_df["chord_kind"].isin(chord_kind_dict["min_3_no_7"]).sum() / len(chords_only_df)))
         self.data_dict[f"{mode}s_harmony"][f"{field}_pct_maj_3_maj_7"] \
-            .append(chords_only_df["chord_kind"].isin(chord_kind_dict["maj_3_maj_7"]).sum() / len(chords_only_df))
+            .append(float(chords_only_df["chord_kind"].isin(chord_kind_dict["maj_3_maj_7"]).sum() / len(chords_only_df)))
         self.data_dict[f"{mode}s_harmony"][f"{field}_pct_min_3_min_7"] \
-            .append(chords_only_df["chord_kind"].isin(chord_kind_dict["min_3_min_7"]).sum() / len(chords_only_df))
+            .append(float(chords_only_df["chord_kind"].isin(chord_kind_dict["min_3_min_7"]).sum() / len(chords_only_df)))
         self.data_dict[f"{mode}s_harmony"][f"{field}_pct_maj_3_min_7"] \
-            .append(chords_only_df["chord_kind"].isin(chord_kind_dict["maj_3_min_7"]).sum() / len(chords_only_df))
+            .append(float(chords_only_df["chord_kind"].isin(chord_kind_dict["maj_3_min_7"]).sum() / len(chords_only_df)))
         self.data_dict[f"{mode}s_harmony"][f"{field}_pct_other_quality"] \
-            .append(chords_only_df["chord_kind"].isin(chord_kind_dict["other"]).sum() / len(chords_only_df))
+            .append(float(chords_only_df["chord_kind"].isin(chord_kind_dict["other"]).sum() / len(chords_only_df)))
 
         return None
 
@@ -1188,8 +1188,8 @@ class PreprocessXML:
         chorus_range_midi = self.data_dict["sections_melody"]["sec_range_midi"][chorus_idx]
         chorus_highest_note = self.data_dict["sections_melody"]["sec_highest_note_midi"][chorus_idx]
         chorus_lowest_note = self.data_dict["sections_melody"]["sec_lowest_note_midi"][chorus_idx]
-        widest_range = np.nanmax(self.data_dict["sections_melody"]["sec_range_midi"])
-        narrowest_range = np.nanmin(self.data_dict["sections_melody"]["sec_range_midi"])
+        widest_range = np.nanmax(np.array(self.data_dict["sections_melody"]["sec_range_midi"], dtype=float))
+        narrowest_range = np.nanmin(np.array(self.data_dict["sections_melody"]["sec_range_midi"], dtype=float))
         chorus_first_chord_root = chorus_dfs["chords"]["chord_root_pc"].iloc[0]
         chorus_first_chord_bass = chorus_dfs["chords"]["chord_bass_pc"].iloc[0]
 
@@ -1206,17 +1206,20 @@ class PreprocessXML:
             sec_range_midi = self.data_dict["sections_melody"]["sec_range_midi"][sec_idx]
             sec_highest_note = self.data_dict["sections_melody"]["sec_highest_note_midi"][sec_idx]
             sec_lowest_note = self.data_dict["sections_melody"]["sec_lowest_note_midi"][sec_idx]
-            sec_has_widest_range = sec_range_midi == widest_range
-            sec_has_narrowest_range = sec_range_midi == narrowest_range
+            sec_has_widest_range = bool(sec_range_midi == widest_range)
+            sec_has_narrowest_range = bool(sec_range_midi == narrowest_range)
 
             self.data_dict["sections_form"]["sec_to_chorus_dur"].append(sec_dur / chorus_dur)
             self.data_dict["sections_form"]["sec_to_chorus_avg_mp_dur"].append(sec_avg_mp_dur / chorus_avg_mp_dur)
             self.data_dict["sections_form"]["sec_to_chorus_avg_hp_dur"].append(sec_avg_hp_dur / chorus_avg_hp_dur)
             self.data_dict["sections_form"]["sec_to_chorus_med_mp_dur"].append(sec_med_mp_dur / chorus_med_mp_dur)
             self.data_dict["sections_form"]["sec_to_chorus_med_hp_dur"].append(sec_med_hp_dur / chorus_med_hp_dur)
-            self.data_dict["sections_melody"]["sec_to_chorus_range_diff"].append(sec_range_midi - chorus_range_midi)
-            self.data_dict["sections_melody"]["sec_to_chorus_highest_note_dist"].append(sec_highest_note - chorus_highest_note)
-            self.data_dict["sections_melody"]["sec_to_chorus_lowest_note_dist"].append(sec_lowest_note - chorus_lowest_note)
+            sec_to_chorus_range_diff = None if sec_range_midi is None else sec_range_midi - chorus_range_midi
+            sec_to_chorus_highest_note_dist = None if sec_highest_note is None else sec_highest_note - chorus_highest_note
+            sec_to_chorus_lowest_note_dist = None if sec_lowest_note is None else sec_lowest_note - chorus_lowest_note
+            self.data_dict["sections_melody"]["sec_to_chorus_range_diff"].append(sec_to_chorus_range_diff)
+            self.data_dict["sections_melody"]["sec_to_chorus_highest_note_dist"].append(sec_to_chorus_highest_note_dist)
+            self.data_dict["sections_melody"]["sec_to_chorus_lowest_note_dist"].append(sec_to_chorus_lowest_note_dist)
             self.data_dict["sections_melody"]["sec_has_track_widest_range"].append(sec_has_widest_range)
             self.data_dict["sections_melody"]["sec_has_track_narrowest_range"].append(sec_has_narrowest_range)
 
@@ -1231,24 +1234,24 @@ class PreprocessXML:
             notes_df = sec_dfs["notes"][sec_dfs["notes"]["note_name"] != "rest"]
             no_notes = len(notes_df) == 0
             if no_notes:  # section without notes
-                self.data_dict["sections_form"]["rest_dur_before_sec_first_note"].append(np.nan)
-                self.data_dict["sections_form"]["rest_dur_after_sec_last_note"].append(np.nan)
+                self.data_dict["sections_form"]["rest_dur_before_sec_first_note"].append(None)
+                self.data_dict["sections_form"]["rest_dur_after_sec_last_note"].append(None)
             elif last_note_offset is None:  # first section with notes
                 first_note_start = notes_df["note_start_offset"].iloc[0]
                 last_note_end = notes_df["note_end_offset"].iloc[-1]
-                self.data_dict["sections_form"]["rest_dur_before_sec_first_note"].append(first_note_start)
+                self.data_dict["sections_form"]["rest_dur_before_sec_first_note"].append(float(first_note_start))
                 last_note_offset = last_note_end
             else:  # middle sections
                 first_note_start = notes_df["note_start_offset"].iloc[0]
                 rest_dur_before_sec = first_note_start - last_note_offset
-                self.data_dict["sections_form"]["rest_dur_after_sec_last_note"].append(rest_dur_before_sec)
-                self.data_dict["sections_form"]["rest_dur_before_sec_first_note"].append(rest_dur_before_sec)
+                self.data_dict["sections_form"]["rest_dur_after_sec_last_note"].append(float(rest_dur_before_sec))
+                self.data_dict["sections_form"]["rest_dur_before_sec_first_note"].append(float(rest_dur_before_sec))
 
                 last_note_end = notes_df["note_end_offset"].iloc[-1]
                 last_note_offset = last_note_end
 
                 if sec_idx == len(self.data_dict["sections"]["sec_id"]) - 1:  # last section with notes
-                    self.data_dict["sections_form"]["rest_dur_after_sec_last_note"].append(self.track_dur - last_note_end)
+                    self.data_dict["sections_form"]["rest_dur_after_sec_last_note"].append(float(self.track_dur - last_note_end))
 
 
     def prepare_all_mps_dfs(self, track_dfs: Mapping[str, pd.DataFrame]) -> Sequence[Mapping[str, pd.DataFrame]]:
@@ -1299,8 +1302,8 @@ class PreprocessXML:
         self.data_dict["melodic_phrases_details"]["mp_start_note_id"].append(start_note_id)
         self.data_dict["melodic_phrases_details"]["mp_end_note_id"].append(end_note_id)
 
-        total_dur = mp_notes_df["duration"].sum()
-        note_dur = notes_only_df["duration"].sum()
+        total_dur = float(mp_notes_df["duration"].sum())
+        note_dur = float(notes_only_df["duration"].sum())
         rest_dur = total_dur - note_dur
         self.data_dict["melodic_phrases_details"]["mp_note_dur"].append(note_dur)
         self.data_dict["melodic_phrases_details"]["mp_note_dur_pct"].append(note_dur / total_dur)
@@ -1308,7 +1311,7 @@ class PreprocessXML:
         self.data_dict["melodic_phrases_details"]["mp_rest_dur_pct"].append(rest_dur / total_dur)
 
         sec_start_offset = self.data_dict["sections"]["sec_start_offset"][sec_idx]
-        mp_start_offset = mp_df["mp_start_offset"].iloc[0]
+        mp_start_offset = float(mp_df["mp_start_offset"].iloc[0])
         self.data_dict["melodic_phrases_details"]["mp_start_section_offset"].append(mp_start_offset - sec_start_offset)
 
         track_avg_mp_dur = self.data_dict["tracks_form"]["track_avg_mp_dur"][-1]
@@ -1331,8 +1334,8 @@ class PreprocessXML:
         self.data_dict["melodic_phrases_details"]["mp_has_track_highest_note"].append(highest_pitch.midi == track_highest_note)
         self.data_dict["melodic_phrases_details"]["mp_has_track_lowest_note"].append(lowest_pitch.midi == track_lowest_note)
 
-        first_highest_note_offset = notes_only_df[notes_only_df["midi_num"]==highest_pitch.midi]["note_start_offset"].iloc[0] - mp_start_offset
-        first_lowest_note_offset = notes_only_df[notes_only_df["midi_num"]==lowest_pitch.midi]["note_start_offset"].iloc[0] - mp_start_offset
+        first_highest_note_offset = float(notes_only_df[notes_only_df["midi_num"]==highest_pitch.midi]["note_start_offset"].iloc[0] - mp_start_offset)
+        first_lowest_note_offset = float(notes_only_df[notes_only_df["midi_num"]==lowest_pitch.midi]["note_start_offset"].iloc[0] - mp_start_offset)
         self.data_dict["melodic_phrases_details"]["pct_into_mp_first_highest_note"].append(first_highest_note_offset / total_dur)
         self.data_dict["melodic_phrases_details"]["pct_into_mp_first_lowest_note"].append(first_lowest_note_offset / total_dur)
 
@@ -1343,8 +1346,8 @@ class PreprocessXML:
 
         n_highest_note = len(notes_only_df[notes_only_df["midi_num"]==highest_pitch.midi])
         n_lowest_note = len(notes_only_df[notes_only_df["midi_num"]==lowest_pitch.midi])
-        dur_on_highest_note = notes_only_df[notes_only_df["midi_num"]==highest_pitch.midi]["duration"].sum()
-        dur_on_lowest_note = notes_only_df[notes_only_df["midi_num"]==lowest_pitch.midi]["duration"].sum()
+        dur_on_highest_note = float(notes_only_df[notes_only_df["midi_num"]==highest_pitch.midi]["duration"].sum())
+        dur_on_lowest_note = float(notes_only_df[notes_only_df["midi_num"]==lowest_pitch.midi]["duration"].sum())
         self.data_dict["melodic_phrases_details"]["mp_n_highest_note"].append(n_highest_note)
         self.data_dict["melodic_phrases_details"]["mp_dur_on_highest_note"].append(dur_on_highest_note)
         self.data_dict["melodic_phrases_details"]["mp_n_notes_on_highest_note_pct"].append(n_highest_note / len(notes_only_df))
@@ -1356,21 +1359,21 @@ class PreprocessXML:
 
         # pitch
         most_common_pitch_list = notes_only_df["midi_num"].mode().values.tolist()
-        self.data_dict["melodic_phrases_details"]["mp_avg_pitch"].append(notes_only_df["midi_num"].mean().round(0).astype(int))
+        self.data_dict["melodic_phrases_details"]["mp_avg_pitch"].append(int(notes_only_df["midi_num"].mean().round(0)))
         self.data_dict["melodic_phrases_details"]["mp_most_common_pitch"] \
             .append(", ".join([str(pitch) for pitch in most_common_pitch_list]))
         self.data_dict[f"melodic_phrases_details"]["mp_most_common_pitch_pct"] \
             .append(len(notes_only_df[notes_only_df["midi_num"].isin(most_common_pitch_list)]) / len(notes_only_df))
 
         # duration
-        mp_longest_note = notes_only_df["duration"].max()
+        mp_longest_note = float(notes_only_df["duration"].max())
         sec_longest_note = self.data_dict["sections_melody"]["sec_longest_note_dur"][sec_idx]
         track_longest_note = self.data_dict["tracks_melody"]["track_longest_note_dur"][-1]
         most_common_note_dur_list = notes_only_df["duration"].mode().values.tolist()
         second_most_common_note_dur_list = self.get_second_most_common_dur(notes_only_df, most_common_note_dur_list)
         self.data_dict["melodic_phrases_details"]["mp_longest_note_dur"].append(mp_longest_note)
-        self.data_dict["melodic_phrases_details"]["has_track_longest_note"].append(mp_longest_note==track_longest_note)
-        self.data_dict["melodic_phrases_details"]["has_sec_longest_note"].append(mp_longest_note==sec_longest_note)
+        self.data_dict["melodic_phrases_details"]["has_track_longest_note"].append(bool(mp_longest_note==track_longest_note))
+        self.data_dict["melodic_phrases_details"]["has_sec_longest_note"].append(bool(mp_longest_note==sec_longest_note))
         self.data_dict["melodic_phrases_details"]["mp_most_common_note_dur"] \
             .append(", ".join([str(dur) for dur in most_common_note_dur_list]))
         self.data_dict["melodic_phrases_details"]["mp_most_common_note_dur_pct"] \
@@ -1381,9 +1384,9 @@ class PreprocessXML:
             .append(len(notes_only_df[notes_only_df["duration"].isin(second_most_common_note_dur_list)]) / len(notes_only_df))
 
         # nct
-        n_nct_notes = (notes_only_df["nct"]==1).sum()
-        dur_nct_notes = notes_only_df[notes_only_df["nct"]==1]["duration"].sum()
-        dur_nct_notes_pct = np.nan if notes_only_df["duration"].sum()==0 else dur_nct_notes / notes_only_df["duration"].sum()
+        n_nct_notes = int((notes_only_df["nct"]==1).sum())
+        dur_nct_notes = float(notes_only_df[notes_only_df["nct"]==1]["duration"].sum())
+        dur_nct_notes_pct = None if notes_only_df["duration"].sum()==0 else float(dur_nct_notes / notes_only_df["duration"].sum())
         self.data_dict["melodic_phrases_details"]["mp_n_nct_notes"].append(n_nct_notes)
         self.data_dict["melodic_phrases_details"]["mp_dur_nct_notes"].append(dur_nct_notes)
         self.data_dict["melodic_phrases_details"]["mp_n_nct_notes_pct"].append(n_nct_notes / len(notes_only_df))
@@ -1409,16 +1412,16 @@ class PreprocessXML:
 
         # harmony
         if no_chords:
-            self.data_dict["melodic_phrases_details"]["mp_n_chords"].append(np.nan)
-            self.data_dict["melodic_phrases_details"]["mp_avg_chord_dur"].append(np.nan)
-            self.data_dict["melodic_phrases_details"]["mp_avg_chord_center_dur"].append(np.nan)
+            self.data_dict["melodic_phrases_details"]["mp_n_chords"].append(None)
+            self.data_dict["melodic_phrases_details"]["mp_avg_chord_dur"].append(None)
+            self.data_dict["melodic_phrases_details"]["mp_avg_chord_center_dur"].append(None)
         else:
             chord_center_cols = ["prev_chord_rb_same_qual_diff", "prev_chord_root_same_bass_diff", "prev_chord_bass_same_root_diff"]
             chords_only_df["new_chord_center"] = (chords_only_df[chord_center_cols].sum(axis=1)==0).cumsum()
             self.data_dict["melodic_phrases_details"]["mp_n_chords"].append(len(chords_only_df))
-            self.data_dict["melodic_phrases_details"]["mp_avg_chord_dur"].append(chords_only_df["chord_dur"].mean())
+            self.data_dict["melodic_phrases_details"]["mp_avg_chord_dur"].append(float(chords_only_df["chord_dur"].mean()))
             self.data_dict["melodic_phrases_details"]["mp_avg_chord_center_dur"] \
-                    .append(chords_only_df[["new_chord_center", "chord_dur"]].groupby("new_chord_center")["chord_dur"].sum().mean())
+                    .append(float(chords_only_df[["new_chord_center", "chord_dur"]].groupby("new_chord_center")["chord_dur"].sum().mean()))
 
         return None
 
@@ -1443,8 +1446,8 @@ class PreprocessXML:
         for mp_id in mp_range_df["mp_id"].values:
             mp_range = mp_range_df[mp_range_df["mp_id"]==mp_id]["mp_range_midi"].iloc[0]
             mp_sec = mp_range_df[mp_range_df["mp_id"]==mp_id]["sec_id"].iloc[0]
-            has_sec_widest_range = mp_range == mp_range_dict["max"][mp_sec]
-            has_sec_narrowest_range = mp_range == mp_range_dict["min"][mp_sec]
+            has_sec_widest_range = bool(mp_range == mp_range_dict["max"][mp_sec])
+            has_sec_narrowest_range = bool(mp_range == mp_range_dict["min"][mp_sec])
             self.data_dict["melodic_phrases_details"]["has_sec_widest_range"].append(has_sec_widest_range)
             self.data_dict["melodic_phrases_details"]["has_sec_narrowest_range"].append(has_sec_narrowest_range)
 
@@ -1478,10 +1481,10 @@ class PreprocessXML:
         self.data_dict["harmonic_phrases_details"]["hp_start_chord_id"].append(start_chord_id)
         self.data_dict["harmonic_phrases_details"]["hp_end_chord_id"].append(end_chord_id)
         sec_start_offset = self.data_dict["sections"]["sec_start_offset"][sec_idx]
-        hp_start_offset = hp_df["hp_start_offset"].iloc[0]
+        hp_start_offset = float(hp_df["hp_start_offset"].iloc[0])
         self.data_dict["harmonic_phrases_details"]["hp_start_section_offset"].append(hp_start_offset - sec_start_offset)
 
-        hp_dur = hp_df["hp_total_dur"].iloc[0]
+        hp_dur = float(hp_df["hp_total_dur"].iloc[0])
         track_avg_hp_dur = self.data_dict["tracks_form"]["track_avg_hp_dur"][0]
         track_med_hp_dur = self.data_dict["tracks_form"]["track_med_hp_dur"][0]
         self.data_dict["harmonic_phrases_details"]["hp_to_track_avg_hp_dur"].append(hp_dur / track_avg_hp_dur)
@@ -1490,31 +1493,31 @@ class PreprocessXML:
         chord_center_cols = ["prev_chord_rb_same_qual_diff", "prev_chord_root_same_bass_diff", "prev_chord_bass_same_root_diff"]
         chords_only_df["new_chord_center"] = (chords_only_df[chord_center_cols].sum(axis=1)==0).cumsum()
         chord_center_durs = chords_only_df.groupby(["new_chord_center"])["chord_dur"].sum()
-        self.data_dict["harmonic_phrases_details"]["hp_avg_chord_dur"].append(chords_only_df["chord_dur"].mean())
-        self.data_dict["harmonic_phrases_details"]["hp_avg_chord_center_dur"].append(chord_center_durs.mean())
-        self.data_dict["harmonic_phrases_details"]["hp_med_chord_dur"].append(chords_only_df["chord_dur"].median())
-        self.data_dict["harmonic_phrases_details"]["hp_med_chord_center_dur"].append(chord_center_durs.median())
+        self.data_dict["harmonic_phrases_details"]["hp_avg_chord_dur"].append(float(chords_only_df["chord_dur"].mean()))
+        self.data_dict["harmonic_phrases_details"]["hp_avg_chord_center_dur"].append(float(chord_center_durs.mean()))
+        self.data_dict["harmonic_phrases_details"]["hp_med_chord_dur"].append(float(chords_only_df["chord_dur"].median()))
+        self.data_dict["harmonic_phrases_details"]["hp_med_chord_center_dur"].append(float(chord_center_durs.median()))
         self.data_dict["harmonic_phrases_details"]["hp_n_chords"].append(len(chords_only_df))
         self.data_dict["harmonic_phrases_details"]["hp_n_unique_chords"].append(chords_only_df["chord_name"].nunique())
         self.data_dict["harmonic_phrases_details"]["hp_n_chord_centers"].append(len(chord_center_durs))
 
         self.data_dict["harmonic_phrases_details"]["hp_pct_maj_3_no_7"] \
-            .append(chords_only_df["chord_kind"].isin(chord_kind_dict["maj_3_no_7"]).sum() / len(chords_only_df))
+            .append(float(chords_only_df["chord_kind"].isin(chord_kind_dict["maj_3_no_7"]).sum() / len(chords_only_df)))
         self.data_dict["harmonic_phrases_details"]["hp_pct_min_3_no_7"] \
-            .append(chords_only_df["chord_kind"].isin(chord_kind_dict["min_3_no_7"]).sum() / len(chords_only_df))
+            .append(float(chords_only_df["chord_kind"].isin(chord_kind_dict["min_3_no_7"]).sum() / len(chords_only_df)))
         self.data_dict["harmonic_phrases_details"]["hp_pct_maj_3_maj_7"] \
-            .append(chords_only_df["chord_kind"].isin(chord_kind_dict["maj_3_maj_7"]).sum() / len(chords_only_df))
+            .append(float(chords_only_df["chord_kind"].isin(chord_kind_dict["maj_3_maj_7"]).sum() / len(chords_only_df)))
         self.data_dict["harmonic_phrases_details"]["hp_pct_min_3_min_7"] \
-            .append(chords_only_df["chord_kind"].isin(chord_kind_dict["min_3_min_7"]).sum() / len(chords_only_df))
+            .append(float(chords_only_df["chord_kind"].isin(chord_kind_dict["min_3_min_7"]).sum() / len(chords_only_df)))
         self.data_dict["harmonic_phrases_details"]["hp_pct_maj_3_min_7"] \
-            .append(chords_only_df["chord_kind"].isin(chord_kind_dict["maj_3_min_7"]).sum() / len(chords_only_df))
+            .append(float(chords_only_df["chord_kind"].isin(chord_kind_dict["maj_3_min_7"]).sum() / len(chords_only_df)))
         self.data_dict["harmonic_phrases_details"]["hp_pct_other_quality"] \
-            .append(chords_only_df["chord_kind"].isin(chord_kind_dict["other"]).sum() / len(chords_only_df))
+            .append(float(chords_only_df["chord_kind"].isin(chord_kind_dict["other"]).sum() / len(chords_only_df)))
 
         self.data_dict["harmonic_phrases_details"]["pct_repeated_chords"] \
-            .append(chords_only_df["chord_name"].duplicated(keep=False).sum() / len(chords_only_df))
+            .append(float(chords_only_df["chord_name"].duplicated(keep=False).sum() / len(chords_only_df)))
         self.data_dict["harmonic_phrases_details"]["pct_chord_center_elongation"] \
-            .append((chords_only_df["prev_chord_elongation"]==1).sum() / len(chords_only_df))
+            .append(float((chords_only_df["prev_chord_elongation"]==1).sum() / len(chords_only_df)))
         self.data_dict["harmonic_phrases_details"]["chord_names"].append(", ".join(chords_only_df["chord_name"].values))
         self.data_dict["harmonic_phrases_details"]["chord_durs"].append(", ".join(chords_only_df["chord_dur"].astype(str).values))
         self.data_dict["harmonic_phrases_details"]["chord_center_durs"].append(", ".join(chord_center_durs.astype(str).values))
@@ -1529,28 +1532,28 @@ class PreprocessXML:
         three_note_cond = chords_only_df["n_pitches"]==3
         four_note_cond = chords_only_df["n_pitches"]==4
         five_plus_note_cond = chords_only_df["n_pitches"]>4
-        self.data_dict["harmonic_phrases_details"]["n_2_note_chords"].append(two_note_cond.sum())
-        self.data_dict["harmonic_phrases_details"]["n_3_note_chords"].append(three_note_cond.sum())
-        self.data_dict["harmonic_phrases_details"]["n_4_note_chords"].append(four_note_cond.sum())
-        self.data_dict["harmonic_phrases_details"]["n_5plus_note_chords"].append(five_plus_note_cond.sum())
-        self.data_dict["harmonic_phrases_details"]["dur_2_note_chords"].append(chords_only_df[two_note_cond]["chord_dur"].sum())
-        self.data_dict["harmonic_phrases_details"]["dur_3_note_chords"].append(chords_only_df[three_note_cond]["chord_dur"].sum())
-        self.data_dict["harmonic_phrases_details"]["dur_4_note_chords"].append(chords_only_df[four_note_cond]["chord_dur"].sum())
-        self.data_dict["harmonic_phrases_details"]["dur_5plus_note_chords"].append(chords_only_df[five_plus_note_cond]["chord_dur"].sum())
+        self.data_dict["harmonic_phrases_details"]["n_2_note_chords"].append(int(two_note_cond.sum()))
+        self.data_dict["harmonic_phrases_details"]["n_3_note_chords"].append(int(three_note_cond.sum()))
+        self.data_dict["harmonic_phrases_details"]["n_4_note_chords"].append(int(four_note_cond.sum()))
+        self.data_dict["harmonic_phrases_details"]["n_5plus_note_chords"].append(int(five_plus_note_cond.sum()))
+        self.data_dict["harmonic_phrases_details"]["dur_2_note_chords"].append(float(chords_only_df[two_note_cond]["chord_dur"].sum()))
+        self.data_dict["harmonic_phrases_details"]["dur_3_note_chords"].append(float(chords_only_df[three_note_cond]["chord_dur"].sum()))
+        self.data_dict["harmonic_phrases_details"]["dur_4_note_chords"].append(float(chords_only_df[four_note_cond]["chord_dur"].sum()))
+        self.data_dict["harmonic_phrases_details"]["dur_5plus_note_chords"].append(float(chords_only_df[five_plus_note_cond]["chord_dur"].sum()))
 
         hp_end_offset = hp_df["hp_end_offset"].iloc[0]
         final_sec = sec_idx == len(self.data_dict["sections"]["sec_id"]) - 1
         next_sec_start_offset = self.track_dur if final_sec else self.data_dict["sections"]["sec_start_offset"][sec_idx + 1]
-        self.data_dict["harmonic_phrases_details"]["hp_overlaps_next_section"].append(hp_end_offset > next_sec_start_offset)
+        self.data_dict["harmonic_phrases_details"]["hp_overlaps_next_section"].append(bool(hp_end_offset > next_sec_start_offset))
 
         self.data_dict["harmonic_phrases_details"]["all_chord_dur_are_same"].append(chords_only_df["chord_dur"].nunique()==1)
 
         track_avg_chord_dur = self.data_dict["tracks_harmony"]["track_avg_chord_dur"][-1]
         track_med_chord_dur = self.data_dict["tracks_harmony"]["track_med_chord_dur"][-1]
         self.data_dict["harmonic_phrases_details"]["hp_to_track_avg_chord_dur"] \
-            .append(chords_only_df["chord_dur"].mean() / track_avg_chord_dur)
+            .append(float(chords_only_df["chord_dur"].mean() / track_avg_chord_dur))
         self.data_dict["harmonic_phrases_details"]["hp_to_track_med_chord_dur"] \
-            .append(chords_only_df["chord_dur"].median() / track_med_chord_dur)
+            .append(float(chords_only_df["chord_dur"].median() / track_med_chord_dur))
 
         return None
 
@@ -1590,7 +1593,7 @@ class PreprocessXML:
 
             sec_start_offset = self.data_dict["sections"]["sec_start_offset"][sec_idx]
             mp_start_offset = None if mp_idx is None else self.data_dict["melodic_phrases"]["mp_start_offset"][mp_idx]
-            note_start_offset = note_df["note_start_offset"].iloc[0]
+            note_start_offset = float(note_df["note_start_offset"].iloc[0])
             note_start_mp_offset = None if mp_idx is None else note_start_offset - mp_start_offset
             self.data_dict["notes_details"]["note_start_section_offset"].append(note_start_offset - sec_start_offset)
             self.data_dict["notes_details"]["note_start_mp_offset"].append(note_start_mp_offset)
@@ -1629,13 +1632,13 @@ class PreprocessXML:
             is_sec_longest_note = False if is_rest else note_dur == sec_longest_note
             mp_longest_note = False if mp_longest_note is None or is_rest else note_dur == mp_longest_note
 
-            self.data_dict["notes_details"]["is_track_highest_note"].append(is_track_highest_note)
-            self.data_dict["notes_details"]["is_track_lowest_note"].append(is_track_lowest_note)
-            self.data_dict["notes_details"]["is_track_longest_note"].append(is_track_longest_note)
-            self.data_dict["notes_details"]["is_sec_highest_note"].append(is_sec_highest_note)
-            self.data_dict["notes_details"]["is_sec_lowest_note"].append(is_sec_lowest_note)
-            self.data_dict["notes_details"]["is_sec_longest_note"].append(is_sec_longest_note)
-            self.data_dict["notes_details"]["is_phrase_longest_note"].append(mp_longest_note)
+            self.data_dict["notes_details"]["is_track_highest_note"].append(bool(is_track_highest_note))
+            self.data_dict["notes_details"]["is_track_lowest_note"].append(bool(is_track_lowest_note))
+            self.data_dict["notes_details"]["is_track_longest_note"].append(bool(is_track_longest_note))
+            self.data_dict["notes_details"]["is_sec_highest_note"].append(bool(is_sec_highest_note))
+            self.data_dict["notes_details"]["is_sec_lowest_note"].append(bool(is_sec_lowest_note))
+            self.data_dict["notes_details"]["is_sec_longest_note"].append(bool(is_sec_longest_note))
+            self.data_dict["notes_details"]["is_phrase_longest_note"].append(bool(mp_longest_note))
 
             note_direction = note_df["prev_note_direction"].iloc[0]
             note_distance_type = note_df["prev_note_distance_type"].iloc[0]
@@ -1685,7 +1688,7 @@ class PreprocessXML:
             sec_idx = np.where(np.array(self.data_dict["sections"]["sec_id"])==sec_id)[0][0]
 
             sec_start_offset = self.data_dict["sections"]["sec_start_offset"][sec_idx]
-            chord_start_offset = chord_df["chord_start_offset"].iloc[0]
+            chord_start_offset = float(chord_df["chord_start_offset"].iloc[0])
             self.data_dict["chords_details"]["chord_start_section_offset"].append(chord_start_offset - sec_start_offset)
 
             # chord degrees
@@ -1719,27 +1722,27 @@ class PreprocessXML:
             chord_root = chord_df["chord_root_pc"].iloc[0]
             chord_bass = chord_df["chord_bass_pc"].iloc[0]
             hp_id = chord_df["hp_id"].iloc[0]
-            self.data_dict["chords_details"]["chord_unique_to_sec"].append(chord_vcs_by_sec[chord_name] == 1)
-            self.data_dict["chords_details"]["chord_quality_unique_to_sec"].append(chord_qualitiy_vcs_by_sec[chord_kind] == 1)
-            self.data_dict["chords_details"]["chord_root_unique_to_sec"].append(chord_root_vcs_by_sec[chord_root] == 1)
-            self.data_dict["chords_details"]["chord_bass_unique_to_sec"].append(chord_bass_vcs_by_sec[chord_bass] == 1)
-            self.data_dict["chords_details"]["n_sec_with_same_chord"].append(chord_vcs_by_sec[chord_name])
-            self.data_dict["chords_details"]["chord_unique_to_hp"].append(chord_vcs_by_hp[chord_name] == 1)
-            self.data_dict["chords_details"]["chord_quality_unique_to_hp"].append(chord_qualitiy_vcs_by_hp[chord_kind] == 1)
-            self.data_dict["chords_details"]["chord_root_unique_to_hp"].append(chord_root_vcs_by_hp[chord_root] == 1)
-            self.data_dict["chords_details"]["chord_bass_unique_to_hp"].append(chord_bass_vcs_by_hp[chord_bass] == 1)
-            self.data_dict["chords_details"]["n_hp_with_same_chord"].append(chord_vcs_by_hp[chord_name])
-            self.data_dict["chords_details"]["chord_unique_in_track"].append(chord_vcs[chord_name] == 1)
-            self.data_dict["chords_details"]["chord_quality_unique_in_track"].append(chord_qualitiy_vcs[chord_kind] == 1)
-            self.data_dict["chords_details"]["chord_root_unique_in_track"].append(chord_root_vcs[chord_root] == 1)
-            self.data_dict["chords_details"]["chord_bass_unique_in_track"].append(chord_bass_vcs[chord_bass] == 1)
+            self.data_dict["chords_details"]["chord_unique_to_sec"].append(bool(chord_vcs_by_sec[chord_name] == 1))
+            self.data_dict["chords_details"]["chord_quality_unique_to_sec"].append(bool(chord_qualitiy_vcs_by_sec[chord_kind] == 1))
+            self.data_dict["chords_details"]["chord_root_unique_to_sec"].append(bool(chord_root_vcs_by_sec[chord_root] == 1))
+            self.data_dict["chords_details"]["chord_bass_unique_to_sec"].append(bool(chord_bass_vcs_by_sec[chord_bass] == 1))
+            self.data_dict["chords_details"]["n_sec_with_same_chord"].append(int(chord_vcs_by_sec[chord_name]))
+            self.data_dict["chords_details"]["chord_unique_to_hp"].append(bool(chord_vcs_by_hp[chord_name] == 1))
+            self.data_dict["chords_details"]["chord_quality_unique_to_hp"].append(bool(chord_qualitiy_vcs_by_hp[chord_kind] == 1))
+            self.data_dict["chords_details"]["chord_root_unique_to_hp"].append(bool(chord_root_vcs_by_hp[chord_root] == 1))
+            self.data_dict["chords_details"]["chord_bass_unique_to_hp"].append(bool(chord_bass_vcs_by_hp[chord_bass] == 1))
+            self.data_dict["chords_details"]["n_hp_with_same_chord"].append(int(chord_vcs_by_hp[chord_name]))
+            self.data_dict["chords_details"]["chord_unique_in_track"].append(bool(chord_vcs[chord_name] == 1))
+            self.data_dict["chords_details"]["chord_quality_unique_in_track"].append(bool(chord_qualitiy_vcs[chord_kind] == 1))
+            self.data_dict["chords_details"]["chord_root_unique_in_track"].append(bool(chord_root_vcs[chord_root] == 1))
+            self.data_dict["chords_details"]["chord_bass_unique_in_track"].append(bool(chord_bass_vcs[chord_bass] == 1))
 
             # chorus comparison
             root_distance, bass_distance = self.get_prev_chord_rb_dist(chord_root, chord_bass, chorus_root, chorus_bass)
             self.data_dict["chords_details"]["chord_to_chorus_first_chord_root_dist"].append(root_distance)
             self.data_dict["chords_details"]["chord_to_chorus_first_chord_bass_dist"].append(bass_distance)
 
-            return None
+        return None
 
 
     # main function for inputing all data into data_dict
