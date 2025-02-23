@@ -522,13 +522,13 @@ class PreprocessXML:
         return False
 
 
-    def check_between_mps(self, mp_end_note_start_offsets: list) -> bool:
+    def check_between_mps(self, ele_track_offset: float, mp_start_offsets: list, mp_end_note_start_offsets: list) -> bool:
 
         if len(self.data_dict['notes']['note_start_offset']) > 0:  # check we're not at the very first element of track
             prev_note_start_offset = self.data_dict['notes']['note_start_offset'][-1]
 
-            # check if previous note was last note of a mp
-            if prev_note_start_offset in mp_end_note_start_offsets:
+            # check if a) previous note was last note of a mp, and b) current note is not start of an mp
+            if prev_note_start_offset in mp_end_note_start_offsets and ele_track_offset not in mp_start_offsets:
                 return True
 
             # TODO: check what happens to spanner info when your slur ends in middle of a tied note, and you parse the part with stripTies()
@@ -650,7 +650,7 @@ class PreprocessXML:
             )
 
         # check if current element is first element between mp's
-        if self.check_between_mps(self.offset_dict['mp_end_note_start_offsets']):
+        if self.check_between_mps(track_offset, self.offset_dict['mp_start_offsets'], self.offset_dict['mp_end_note_start_offsets']):
             self.id_dict['current_mp_index'] = -1
             self.id_dict['current_mp_id'] = None
 
@@ -873,8 +873,8 @@ class PreprocessXML:
         self.data_dict[f"{mode}s_form"][f"{field}_id"].append(current_id)
 
         # start and end ids
-        notes_only_df = df_dict["notes"][df_dict["notes"]["note_name"] != "rest"]
-        chords_only_df = df_dict["chords"][df_dict["chords"]["chord_name"] != "N.C."]
+        notes_only_df = df_dict["notes"][df_dict["notes"]["note_name"] != "rest"].copy()
+        chords_only_df = df_dict["chords"][df_dict["chords"]["chord_name"] != "N.C."].copy()
 
         if len(notes_only_df) == 0:
             notes_only_df_values = {
@@ -929,10 +929,12 @@ class PreprocessXML:
         notes_between_mp_df = df_dict["notes"][df_dict["notes"]["mp_id"].isna()]
         rest_dur_in_mps = float(notes_in_mp_df[notes_in_mp_df["note_name"]=="rest"]["duration"].sum())
         rest_dur_between_mps = rest_dur - rest_dur_in_mps
+        rest_dur_in_mps_pct = 0 if rest_dur == 0 else rest_dur_in_mps / rest_dur
+        rest_dur_between_mps_pct = 0 if rest_dur == 0 else rest_dur_between_mps / rest_dur
         self.data_dict[f"{mode}s_form"][f"{field}_rest_dur_in_mps"].append(rest_dur_in_mps)
-        self.data_dict[f"{mode}s_form"][f"{field}_rest_dur_in_mps_pct"].append(rest_dur_in_mps / rest_dur)
+        self.data_dict[f"{mode}s_form"][f"{field}_rest_dur_in_mps_pct"].append(rest_dur_in_mps_pct)
         self.data_dict[f"{mode}s_form"][f"{field}_rest_dur_between_mps"].append(rest_dur_between_mps)
-        self.data_dict[f"{mode}s_form"][f"{field}_rest_dur_between_mps_pct"].append(rest_dur_between_mps / rest_dur)
+        self.data_dict[f"{mode}s_form"][f"{field}_rest_dur_between_mps_pct"].append(rest_dur_between_mps_pct)
 
         rest_dur_in_mps_series = notes_in_mp_df[notes_in_mp_df["note_name"]=="rest"][["mp_id", "duration"]] \
             .groupby("mp_id")["duration"].sum()
@@ -1680,7 +1682,6 @@ class PreprocessXML:
         chorus_root, chorus_bass = chorus_fist_chord[["chord_root_pc", "chord_bass_pc"]].iloc[0]
 
         for chord_id in self.data_dict["chords"]["chord_id"]:
-
             self.data_dict["chords_details"]["chord_id"].append(chord_id)
 
             chord_df = chords_df[chords_df["chord_id"]==chord_id]
@@ -1699,7 +1700,11 @@ class PreprocessXML:
             fifth = fifth[0] if len(fifth)==1 else None
             seventh = [d for d in chord_degrees if "7" in d and "1" not in d]
             seventh = seventh[0] if len(seventh)==1 else None
-            has_extensions = False if len([d for d in chord_degrees if int(d.strip("-")) > 7])==0 else True
+            no_chord = (chord_df["chord_name"]=="N.C.").values[0]
+            if no_chord:
+                has_extensions = False
+            else:
+                has_extensions = False if len([d for d in chord_degrees if int(d.strip("-")) > 7])==0 else True
             has_added_notes = False if len([d for d in chord_degrees if d.strip("-") in ["2", "4", "6"]])==0 else True
             self.data_dict["chords_details"]["third_interval"].append(third)
             self.data_dict["chords_details"]["fifth_interval"].append(fifth)
