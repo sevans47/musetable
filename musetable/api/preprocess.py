@@ -2,6 +2,7 @@ import music21 as m21
 from typing import Union, Mapping, Sequence
 import numpy as np
 import pandas as pd
+import copy
 
 from const import SCOPE, BASIC_TABLES, NULLABLE_COLUMNS, DATA_DICT, DATA_TYPE_DICT, chord_kind_dict
 
@@ -33,8 +34,8 @@ class PreprocessXML:
         self.expression_marks = self.make_expression_marks_list(self.part_recurse)  # determines harmonic phrases
         self.offset_dict = self.make_offset_dict(self.rehearsal_marks, self.spanners, self.expression_marks)
         self.make_sec_offset_to_sec_id_dict()  # add this to offset_dict
-        self.data_dict = DATA_DICT
-        self.data_type_dict = DATA_TYPE_DICT
+        self.data_dict = copy.deepcopy(DATA_DICT)
+        self.data_type_dict = copy.deepcopy(DATA_TYPE_DICT)
         self.nullable_columns = NULLABLE_COLUMNS
 
         # remove unneeded tables from data_dict
